@@ -112,6 +112,11 @@ export default function DashboardScreen() {
       return;
     }
 
+    if (label === 'Laporan') {
+      router.push('/reports');
+      return;
+    }
+
     showNextPhase(label);
   };
 

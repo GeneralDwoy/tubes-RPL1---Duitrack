@@ -30,6 +30,28 @@ export type MonthlySummary = {
   income: number;
 };
 
+export type ReportCategory = {
+  budget: number;
+  color: string;
+  id: string;
+  name: string;
+  percentage: number;
+  spent: number;
+};
+
+export type ReportWeek = {
+  expense: number;
+  income: number;
+  label: string;
+};
+
+export type MonthlyReport = {
+  categories: ReportCategory[];
+  period: string;
+  summary: MonthlySummary;
+  weeks: ReportWeek[];
+};
+
 type CategoryInput = {
   budget?: number;
   color: string;
@@ -71,6 +93,20 @@ type ExpenseRow = {
     id_kategori: string;
   }[];
   id_pengeluaran: string;
+  tanggal: string;
+  total_pengeluaran: number;
+};
+
+type ReportIncomeRow = {
+  tanggal: string;
+  total_pemasukan: number;
+};
+
+type ReportExpenseRow = {
+  detail_pengeluaran: {
+    id_kategori: string;
+    nominal: number;
+  }[];
   tanggal: string;
   total_pengeluaran: number;
 };
@@ -172,6 +208,80 @@ export async function getMonthlySummary(dateValue: string | Date = new Date()) {
     expense: Number(data?.total_pengeluaran ?? 0),
     income: Number(data?.total_pemasukan ?? 0),
   } satisfies MonthlySummary;
+}
+
+export async function getMonthlyReport(dateValue: Date = new Date()) {
+  const { start, end } = getMonthBounds(dateValue);
+  const [incomeResult, expenseResult, categories] = await Promise.all([
+    supabase
+      .from('pemasukan')
+      .select('tanggal,total_pemasukan')
+      .gte('tanggal', start)
+      .lt('tanggal', end)
+      .order('tanggal'),
+    supabase
+      .from('pengeluaran')
+      .select('tanggal,total_pengeluaran,detail_pengeluaran(nominal,id_kategori)')
+      .gte('tanggal', start)
+      .lt('tanggal', end)
+      .order('tanggal'),
+    listCategories('pengeluaran'),
+  ]);
+
+  if (incomeResult.error) throw incomeResult.error;
+  if (expenseResult.error) throw expenseResult.error;
+
+  const incomes = incomeResult.data as unknown as ReportIncomeRow[];
+  const expenses = expenseResult.data as unknown as ReportExpenseRow[];
+  const daysInMonth = new Date(dateValue.getFullYear(), dateValue.getMonth() + 1, 0).getDate();
+  const weeks: ReportWeek[] = Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, index) => {
+    const firstDay = index * 7 + 1;
+    const lastDay = Math.min(firstDay + 6, daysInMonth);
+    return { expense: 0, income: 0, label: `${firstDay}-${lastDay}` };
+  });
+
+  for (const income of incomes) {
+    const weekIndex = Math.floor((Number(income.tanggal.slice(8, 10)) - 1) / 7);
+    weeks[weekIndex].income += Number(income.total_pemasukan);
+  }
+
+  const categorySpending = new Map<string, number>();
+  for (const expense of expenses) {
+    const weekIndex = Math.floor((Number(expense.tanggal.slice(8, 10)) - 1) / 7);
+    weeks[weekIndex].expense += Number(expense.total_pengeluaran);
+
+    for (const detail of expense.detail_pengeluaran) {
+      categorySpending.set(
+        detail.id_kategori,
+        (categorySpending.get(detail.id_kategori) ?? 0) + Number(detail.nominal),
+      );
+    }
+  }
+
+  const income = incomes.reduce((total, item) => total + Number(item.total_pemasukan), 0);
+  const expense = expenses.reduce((total, item) => total + Number(item.total_pengeluaran), 0);
+  const reportCategories = categories
+    .map((category) => {
+      const spent = categorySpending.get(category.id_kategori) ?? 0;
+      return {
+        budget: category.target_anggaran,
+        color: category.warna,
+        id: category.id_kategori,
+        name: category.nama_kategori,
+        percentage:
+          category.target_anggaran > 0 ? (spent / category.target_anggaran) * 100 : 0,
+        spent,
+      } satisfies ReportCategory;
+    })
+    .filter((category) => category.spent > 0 || category.budget > 0)
+    .sort((a, b) => b.spent - a.spent);
+
+  return {
+    categories: reportCategories,
+    period: start,
+    summary: { balance: income - expense, expense, income },
+    weeks,
+  } satisfies MonthlyReport;
 }
 
 async function getCategorySpending(categoryId: string, date: string) {
