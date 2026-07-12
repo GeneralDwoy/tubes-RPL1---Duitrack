@@ -1,0 +1,23 @@
+# Dependencies and Expo output
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and local editor files
+*.log
+.DS_Store
+
+# Temporary document extraction folders
+_docx_design/
+_docx_extract/
+_docx_req/
+
+# Local project documentation (may contain personal information)
+*.docx
+
