@@ -91,6 +91,8 @@ const styles = StyleSheet.create({
     borderColor: colors.coral,
   },
   input: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     color: colors.ink,
     flex: 1,
     fontSize: 16,
