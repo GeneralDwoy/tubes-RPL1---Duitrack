@@ -22,6 +22,7 @@ import { AppButton } from '@/components/app-button';
 import { FormField } from '@/components/form-field';
 import { ScreenHeader } from '@/components/screen-header';
 import { colors, layout } from '@/constants/theme';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency-input';
 import {
   type Category,
   type CategoryKind,
@@ -36,10 +37,7 @@ import { useAuth } from '@/providers/auth-provider';
 const swatches = ['#087B68', '#D76459', '#D99A2B', '#5377A6', '#9A6DB0', '#73817E'];
 
 const categorySchema = z.object({
-  budget: z
-    .string()
-    .trim()
-    .refine((value) => value === '' || /^\d+$/.test(value), 'Anggaran harus berupa angka'),
+  budget: z.string(),
   kind: z.enum(['pemasukan', 'pengeluaran']),
   name: z.string().trim().min(2, 'Nama kategori minimal 2 karakter'),
 });
@@ -110,7 +108,7 @@ export default function CategoriesScreen() {
     setSelectedColor(category.warna);
     setServerError(null);
     reset({
-      budget: String(category.target_anggaran),
+      budget: formatCurrencyInput(String(category.target_anggaran)),
       kind: category.jenis,
       name: category.nama_kategori,
     });
@@ -120,7 +118,7 @@ export default function CategoriesScreen() {
   const onSubmit = async (values: CategoryValues) => {
     setServerError(null);
     const input = {
-      budget: Number(values.budget || 0),
+      budget: parseCurrencyInput(values.budget),
       color: selectedColor,
       kind: values.kind,
       name: values.name,
@@ -317,9 +315,10 @@ export default function CategoriesScreen() {
                       icon={Target}
                       keyboardType="numeric"
                       label="Anggaran bulanan"
+                      maxLength={18}
                       onBlur={onBlur}
-                      onChangeText={onChange}
-                      placeholder="0 berarti tanpa batas"
+                      onChangeText={(text) => onChange(formatCurrencyInput(text))}
+                      placeholder="Contoh: 1.000.000"
                       value={value}
                     />
                   )}

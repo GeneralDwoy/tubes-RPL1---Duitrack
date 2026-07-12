@@ -24,6 +24,16 @@ export type FinanceTransaction = {
   type: 'income' | 'expense';
 };
 
+export type EditableTransaction = {
+  amount: number;
+  categoryId: string;
+  date: string;
+  description: string;
+  id: string;
+  source: string;
+  type: 'income' | 'expense';
+};
+
 export type MonthlySummary = {
   balance: number;
   expense: number;
@@ -334,16 +344,17 @@ export async function createIncome(input: IncomeInput) {
   return header.id_pemasukan;
 }
 
-export async function createExpense(input: ExpenseInput) {
-  const [userId, summary, categories] = await Promise.all([
-    requireUserId(),
+async function validateExpenseInput(input: ExpenseInput, existing?: EditableTransaction) {
+  const [summary, categories] = await Promise.all([
     getMonthlySummary(input.date),
     listCategories('pengeluaran'),
   ]);
+  const sameMonth = existing?.date.slice(0, 7) === input.date.slice(0, 7);
+  const availableBalance = summary.balance + (sameMonth ? existing.amount : 0);
 
-  if (input.amount > summary.balance) {
+  if (input.amount > availableBalance) {
     throw new FinanceValidationError(
-      `Saldo tidak cukup. Saldo bulan ini ${formatCurrency(summary.balance)}.`,
+      `Saldo tidak cukup. Saldo yang tersedia ${formatCurrency(availableBalance)}.`,
     );
   }
 
@@ -352,13 +363,21 @@ export async function createExpense(input: ExpenseInput) {
 
   if (category.target_anggaran > 0) {
     const currentSpending = await getCategorySpending(category.id_kategori, input.date);
-    if (currentSpending + input.amount > category.target_anggaran) {
-      const remaining = Math.max(category.target_anggaran - currentSpending, 0);
+    const existingAmountInCategory =
+      sameMonth && existing?.categoryId === category.id_kategori ? existing.amount : 0;
+    const adjustedSpending = Math.max(currentSpending - existingAmountInCategory, 0);
+
+    if (adjustedSpending + input.amount > category.target_anggaran) {
+      const remaining = Math.max(category.target_anggaran - adjustedSpending, 0);
       throw new FinanceValidationError(
         `Anggaran ${category.nama_kategori} tersisa ${formatCurrency(remaining)}.`,
       );
     }
   }
+}
+
+export async function createExpense(input: ExpenseInput) {
+  const [userId] = await Promise.all([requireUserId(), validateExpenseInput(input)]);
 
   const { data: header, error: headerError } = await supabase
     .from('pengeluaran')
@@ -381,6 +400,131 @@ export async function createExpense(input: ExpenseInput) {
   }
 
   return header.id_pengeluaran;
+}
+
+export async function getTransaction(type: 'income' | 'expense', transactionId: string) {
+  if (type === 'income') {
+    const { data, error } = await supabase
+      .from('pemasukan')
+      .select(
+        'id_pemasukan,tanggal,detail_pemasukan(id_kategori,sumber,nominal,catatan)',
+      )
+      .eq('id_pemasukan', transactionId)
+      .single();
+
+    if (error) throw error;
+    const detail = data.detail_pemasukan[0];
+    if (!detail) throw new Error('Detail pemasukan tidak ditemukan.');
+
+    return {
+      amount: Number(detail.nominal),
+      categoryId: detail.id_kategori ?? '',
+      date: data.tanggal,
+      description: detail.catatan ?? '',
+      id: data.id_pemasukan,
+      source: detail.sumber,
+      type: 'income',
+    } satisfies EditableTransaction;
+  }
+
+  const { data, error } = await supabase
+    .from('pengeluaran')
+    .select(
+      'id_pengeluaran,tanggal,detail_pengeluaran(id_kategori,nominal,deskripsi)',
+    )
+    .eq('id_pengeluaran', transactionId)
+    .single();
+
+  if (error) throw error;
+  const detail = data.detail_pengeluaran[0];
+  if (!detail) throw new Error('Detail pengeluaran tidak ditemukan.');
+
+  return {
+    amount: Number(detail.nominal),
+    categoryId: detail.id_kategori,
+    date: data.tanggal,
+    description: detail.deskripsi ?? '',
+    id: data.id_pengeluaran,
+    source: '',
+    type: 'expense',
+  } satisfies EditableTransaction;
+}
+
+export async function updateIncome(transactionId: string, input: IncomeInput) {
+  const existing = await getTransaction('income', transactionId);
+  const sourceSummary = await getMonthlySummary(existing.date);
+  const sameMonth = existing.date.slice(0, 7) === input.date.slice(0, 7);
+  const projectedSourceBalance =
+    sourceSummary.balance - existing.amount + (sameMonth ? input.amount : 0);
+
+  if (projectedSourceBalance < 0) {
+    throw new FinanceValidationError(
+      'Pemasukan tidak dapat diubah karena saldo bulan asal akan menjadi negatif.',
+    );
+  }
+
+  const { error: headerError } = await supabase
+    .from('pemasukan')
+    .update({ tanggal: input.date })
+    .eq('id_pemasukan', transactionId)
+    .select('id_pemasukan')
+    .single();
+  if (headerError) throw headerError;
+
+  const { error: detailError } = await supabase
+    .from('detail_pemasukan')
+    .update({
+      catatan: input.notes?.trim() || null,
+      id_kategori: input.categoryId || null,
+      nominal: input.amount,
+      sumber: input.source.trim(),
+    })
+    .eq('id_pemasukan', transactionId)
+    .select('id_detail_masuk')
+    .single();
+  if (detailError) throw detailError;
+}
+
+export async function updateExpense(transactionId: string, input: ExpenseInput) {
+  const existing = await getTransaction('expense', transactionId);
+  await validateExpenseInput(input, existing);
+
+  const { error: headerError } = await supabase
+    .from('pengeluaran')
+    .update({ tanggal: input.date })
+    .eq('id_pengeluaran', transactionId)
+    .select('id_pengeluaran')
+    .single();
+  if (headerError) throw headerError;
+
+  const { error: detailError } = await supabase
+    .from('detail_pengeluaran')
+    .update({
+      deskripsi: input.description?.trim() || null,
+      id_kategori: input.categoryId,
+      nominal: input.amount,
+    })
+    .eq('id_pengeluaran', transactionId)
+    .select('id_detail_keluar')
+    .single();
+  if (detailError) throw detailError;
+}
+
+export async function deleteTransaction(type: 'income' | 'expense', transactionId: string) {
+  if (type === 'income') {
+    const existing = await getTransaction('income', transactionId);
+    const summary = await getMonthlySummary(existing.date);
+    if (summary.balance - existing.amount < 0) {
+      throw new FinanceValidationError(
+        'Pemasukan tidak dapat dihapus karena masih digunakan untuk menutup pengeluaran bulan tersebut.',
+      );
+    }
+  }
+
+  const table = type === 'income' ? 'pemasukan' : 'pengeluaran';
+  const idColumn = type === 'income' ? 'id_pemasukan' : 'id_pengeluaran';
+  const { error } = await supabase.from(table).delete().eq(idColumn, transactionId);
+  if (error) throw error;
 }
 
 export async function listRecentTransactions(limit = 10) {

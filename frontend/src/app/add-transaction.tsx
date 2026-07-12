@@ -19,13 +19,17 @@ import { CategoryPicker } from '@/components/category-picker';
 import { FormField } from '@/components/form-field';
 import { ScreenHeader } from '@/components/screen-header';
 import { colors, layout } from '@/constants/theme';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency-input';
 import {
   type Category,
   type CategoryKind,
   FinanceValidationError,
   createExpense,
   createIncome,
+  getTransaction,
   listCategories,
+  updateExpense,
+  updateIncome,
 } from '@/lib/finance';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -33,8 +37,8 @@ const transactionSchema = z.object({
   amount: z
     .string()
     .trim()
-    .regex(/^\d+$/, 'Nominal harus berupa angka')
-    .refine((value) => Number(value) > 0, 'Nominal harus lebih dari 0'),
+    .min(1, 'Nominal wajib diisi')
+    .refine((value) => parseCurrencyInput(value) > 0, 'Nominal harus lebih dari 0'),
   categoryId: z.string(),
   date: z
     .string()
@@ -56,17 +60,20 @@ function today() {
 
 export default function AddTransactionScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string }>();
+  const params = useLocalSearchParams<{ id?: string; type?: string }>();
   const type: 'income' | 'expense' = params.type === 'income' ? 'income' : 'expense';
+  const transactionId = params.id;
   const categoryKind: CategoryKind = type === 'income' ? 'pemasukan' : 'pengeluaran';
   const { loading: authLoading, session } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(true);
+  const [recordLoading, setRecordLoading] = useState(Boolean(transactionId));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
+    reset,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<TransactionValues>({
@@ -90,11 +97,43 @@ export default function AddTransactionScreen() {
     listCategories(categoryKind)
       .then((items) => {
         setCategories(items);
-        if (items.length === 1) setValue('categoryId', items[0].id_kategori);
+        if (!transactionId && items.length === 1) setValue('categoryId', items[0].id_kategori);
       })
       .catch((error) => Alert.alert('Gagal memuat kategori', error.message))
       .finally(() => setCategoryLoading(false));
-  }, [categoryKind, session, setValue]);
+  }, [categoryKind, session, setValue, transactionId]);
+
+  useEffect(() => {
+    if (!session || !transactionId) return;
+
+    let active = true;
+    getTransaction(type, transactionId)
+      .then((transaction) => {
+        if (!active) return;
+        reset({
+          amount: formatCurrencyInput(String(transaction.amount)),
+          categoryId: transaction.categoryId,
+          date: transaction.date,
+          description: transaction.description,
+          source: transaction.source,
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+        Alert.alert(
+          'Transaksi tidak dapat dibuka',
+          error instanceof Error ? error.message : 'Data transaksi tidak ditemukan.',
+        );
+        router.back();
+      })
+      .finally(() => {
+        if (active) setRecordLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reset, router, session, transactionId, type]);
 
   const onSubmit = async (values: TransactionValues) => {
     setServerError(null);
@@ -110,23 +149,28 @@ export default function AddTransactionScreen() {
     }
 
     try {
+      const amount = parseCurrencyInput(values.amount);
       if (type === 'income') {
-        await createIncome({
-          amount: Number(values.amount),
+        const input = {
+          amount,
           categoryId: values.categoryId || null,
           date: values.date,
           notes: values.description,
           source: values.source,
-        });
+        };
+        if (transactionId) await updateIncome(transactionId, input);
+        else await createIncome(input);
       } else {
-        await createExpense({
-          amount: Number(values.amount),
+        const input = {
+          amount,
           categoryId: values.categoryId,
           date: values.date,
           description: values.description,
-        });
+        };
+        if (transactionId) await updateExpense(transactionId, input);
+        else await createExpense(input);
       }
-      router.replace('/dashboard');
+      router.replace(transactionId ? '/transactions' : '/dashboard');
     } catch (error) {
       setServerError(
         error instanceof FinanceValidationError
@@ -138,7 +182,7 @@ export default function AddTransactionScreen() {
     }
   };
 
-  if (authLoading || !session) {
+  if (authLoading || !session || recordLoading) {
     return (
       <SafeAreaView style={styles.loadingScreen}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -150,8 +194,12 @@ export default function AddTransactionScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <ScreenHeader
-          subtitle="Data akan langsung masuk ke ringkasan keuangan"
-          title={type === 'income' ? 'Tambah pemasukan' : 'Tambah pengeluaran'}
+          subtitle={
+            transactionId
+              ? 'Perubahan akan memperbarui saldo dan laporan'
+              : 'Data akan langsung masuk ke ringkasan keuangan'
+          }
+          title={`${transactionId ? 'Ubah' : 'Tambah'} ${type === 'income' ? 'pemasukan' : 'pengeluaran'}`}
         />
 
         <View style={styles.typeBand}>
@@ -181,9 +229,10 @@ export default function AddTransactionScreen() {
                 icon={Banknote}
                 keyboardType="numeric"
                 label="Nominal"
+                maxLength={18}
                 onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Contoh: 250000"
+                onChangeText={(text) => onChange(formatCurrencyInput(text))}
+                placeholder="Contoh: 250.000"
                 value={value}
               />
             )}
@@ -263,7 +312,7 @@ export default function AddTransactionScreen() {
           <AppButton
             disabled={categories.length === 0}
             icon={Save}
-            label="Simpan transaksi"
+            label={transactionId ? 'Simpan perubahan' : 'Simpan transaksi'}
             loading={isSubmitting}
             onPress={handleSubmit(onSubmit)}
           />

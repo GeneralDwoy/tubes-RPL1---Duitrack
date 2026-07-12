@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, ReceiptText } from 'lucide-react-native';
+import { ArrowDownLeft, ArrowUpRight, Pencil, ReceiptText, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 import { ScreenHeader } from '@/components/screen-header';
 import { colors, layout } from '@/constants/theme';
 import {
+  deleteTransaction,
   type FinanceTransaction,
   formatCurrency,
   listRecentTransactions,
@@ -43,6 +44,7 @@ export default function TransactionsScreen() {
   const [filter, setFilter] = useState<TransactionFilter>('all');
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/welcome');
@@ -67,6 +69,38 @@ export default function TransactionsScreen() {
   const visibleTransactions = transactions.filter(
     (transaction) => filter === 'all' || transaction.type === filter,
   );
+
+  const confirmDelete = (transaction: FinanceTransaction) => {
+    Alert.alert(
+      'Hapus transaksi?',
+      `${transaction.title} senilai ${formatCurrency(transaction.amount)} akan dihapus.`,
+      [
+        { style: 'cancel', text: 'Batal' },
+        {
+          onPress: async () => {
+            setDeletingId(transaction.id);
+            try {
+              await deleteTransaction(transaction.type, transaction.id);
+              setTransactions((current) =>
+                current.filter(
+                  (item) => item.id !== transaction.id || item.type !== transaction.type,
+                ),
+              );
+            } catch (error) {
+              Alert.alert(
+                'Transaksi tidak dapat dihapus',
+                error instanceof Error ? error.message : 'Silakan coba kembali.',
+              );
+            } finally {
+              setDeletingId(null);
+            }
+          },
+          style: 'destructive',
+          text: 'Hapus',
+        },
+      ],
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -132,12 +166,40 @@ export default function TransactionsScreen() {
                         .join(' - ')}
                     </Text>
                   </View>
-                  <Text
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                    style={[styles.amount, income ? styles.incomeAmount : styles.expenseAmount]}>
-                    {income ? '+' : '-'} {formatCurrency(transaction.amount)}
-                  </Text>
+                  <View style={styles.transactionRight}>
+                    <Text
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      style={[styles.amount, income ? styles.incomeAmount : styles.expenseAmount]}>
+                      {income ? '+' : '-'} {formatCurrency(transaction.amount)}
+                    </Text>
+                    <View style={styles.rowActions}>
+                      <Pressable
+                        accessibilityLabel={`Ubah ${transaction.title}`}
+                        accessibilityRole="button"
+                        onPress={() =>
+                          router.push({
+                            pathname: '/add-transaction',
+                            params: { id: transaction.id, type: transaction.type },
+                          })
+                        }
+                        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+                        <Pencil color={colors.ink} size={16} />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel={`Hapus ${transaction.title}`}
+                        accessibilityRole="button"
+                        disabled={deletingId === transaction.id}
+                        onPress={() => confirmDelete(transaction)}
+                        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+                        {deletingId === transaction.id ? (
+                          <ActivityIndicator color={colors.coral} size="small" />
+                        ) : (
+                          <Trash2 color={colors.coral} size={16} />
+                        )}
+                      </Pressable>
+                    </View>
+                  </View>
                 </View>
               );
             })
@@ -215,7 +277,17 @@ const styles = StyleSheet.create({
   transactionCopy: { flex: 1, gap: 4, minWidth: 0 },
   transactionTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
   transactionMeta: { color: colors.muted, fontSize: 11 },
-  amount: { fontSize: 13, fontWeight: '800', maxWidth: '38%', textAlign: 'right' },
+  transactionRight: { alignItems: 'flex-end', gap: 8, maxWidth: '42%', minWidth: 88 },
+  amount: { fontSize: 13, fontWeight: '800', maxWidth: '100%', textAlign: 'right' },
+  rowActions: { flexDirection: 'row', gap: 6 },
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 6,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
   incomeAmount: { color: colors.primary },
   expenseAmount: { color: colors.coral },
   emptyState: { alignItems: 'center', gap: 8, paddingVertical: 70 },
