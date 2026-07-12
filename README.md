@@ -25,7 +25,7 @@ DuiTrack adalah aplikasi pencatatan keuangan pribadi yang dirancang untuk berjal
 
 ## Status Pengembangan
 
-Fondasi antarmuka sudah tersedia untuk splash screen, halaman sambutan, login, registrasi, pemulihan kata sandi, dan dashboard awal. Validasi formulir berjalan secara lokal; autentikasi dan penyimpanan data akan dihubungkan ke Supabase pada tahap berikutnya.
+Fondasi antarmuka sudah tersedia untuk splash screen, halaman sambutan, login, registrasi, pemulihan kata sandi, penggantian kata sandi, dan dashboard awal. Autentikasi sudah terhubung ke Supabase dengan sesi tersimpan dan perlindungan route dashboard.
 
 Fondasi Supabase tersedia di `supabase/schema.sql`, sedangkan langkah pembuatan project dan pemasangan key dijelaskan di `docs/SUPABASE_SETUP.md`.
 

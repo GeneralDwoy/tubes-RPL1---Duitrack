@@ -3,10 +3,11 @@ import { StatusBar } from 'expo-status-bar';
 
 import '@/global.css';
 import { colors } from '@/constants/theme';
+import { AuthProvider } from '@/providers/auth-provider';
 
 export default function RootLayout() {
   return (
-    <>
+    <AuthProvider>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -15,6 +16,6 @@ export default function RootLayout() {
         }}
       />
       <StatusBar style="dark" />
-    </>
+    </AuthProvider>
   );
 }

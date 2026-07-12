@@ -5,14 +5,20 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { BrandMark } from '@/components/brand-mark';
 import { colors } from '@/constants/theme';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { loading, session } = useAuth();
 
   useEffect(() => {
-    const timer = setTimeout(() => router.replace('/welcome'), 1400);
+    if (loading) return;
+    const timer = setTimeout(
+      () => router.replace(session ? '/dashboard' : '/welcome'),
+      900,
+    );
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [loading, router, session]);
 
   return (
     <View style={styles.screen}>

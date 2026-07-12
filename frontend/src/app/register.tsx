@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { LockKeyhole, Mail, UserPlus, UserRound } from 'lucide-react-native';
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
@@ -8,7 +9,9 @@ import { z } from 'zod';
 import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
 import { FormField } from '@/components/form-field';
-import { colors } from '@/constants/theme';
+import { colors, layout } from '@/constants/theme';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import { useAuth } from '@/providers/auth-provider';
 
 const registerSchema = z
   .object({
@@ -26,6 +29,8 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { signUp } = useAuth();
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -35,8 +40,21 @@ export default function RegisterScreen() {
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = () => {
-    router.replace({ pathname: '/login', params: { registered: '1' } });
+  const onSubmit = async ({ email, name, password }: RegisterValues) => {
+    setServerError(null);
+    try {
+      const { sessionCreated } = await signUp({ email, name, password });
+      if (sessionCreated) {
+        router.replace('/dashboard');
+        return;
+      }
+      router.replace({
+        pathname: '/login',
+        params: { confirmation: '1', registered: '1' },
+      });
+    } catch (error) {
+      setServerError(getAuthErrorMessage(error));
+    }
   };
 
   return (
@@ -54,6 +72,11 @@ export default function RegisterScreen() {
       subtitle="Gunakan email aktif agar akunmu siap disambungkan ke seluruh perangkat."
       title="Buat akun DuiTrack">
       <View style={styles.form}>
+        {serverError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{serverError}</Text>
+          </View>
+        ) : null}
         <Controller
           control={control}
           name="name"
@@ -142,6 +165,19 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   form: {
     gap: 17,
+  },
+  errorBanner: {
+    backgroundColor: colors.coralSoft,
+    borderColor: '#E8B8B2',
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    padding: 12,
+  },
+  errorBannerText: {
+    color: '#8A3932',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
   },
   terms: {
     color: colors.muted,

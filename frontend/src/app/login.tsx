@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, CircleCheck, LockKeyhole, LogIn, Mail } from 'lucide-react-native';
+import { CircleCheck, LockKeyhole, LogIn, Mail } from 'lucide-react-native';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +10,8 @@ import { AppButton } from '@/components/app-button';
 import { AuthLayout } from '@/components/auth-layout';
 import { FormField } from '@/components/form-field';
 import { colors, layout } from '@/constants/theme';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import { useAuth } from '@/providers/auth-provider';
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email wajib diisi').email('Format email belum benar'),
@@ -20,8 +22,12 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { registered } = useLocalSearchParams<{ registered?: string }>();
-  const [rememberMe, setRememberMe] = useState(true);
+  const { confirmation, registered } = useLocalSearchParams<{
+    confirmation?: string;
+    registered?: string;
+  }>();
+  const { signIn } = useAuth();
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -31,8 +37,14 @@ export default function LoginScreen() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = () => {
-    router.replace('/dashboard');
+  const onSubmit = async ({ email, password }: LoginValues) => {
+    setServerError(null);
+    try {
+      await signIn(email, password);
+      router.replace('/dashboard');
+    } catch (error) {
+      setServerError(getAuthErrorMessage(error));
+    }
   };
 
   return (
@@ -52,7 +64,17 @@ export default function LoginScreen() {
       {registered === '1' ? (
         <View style={styles.successBanner}>
           <CircleCheck color={colors.success} size={19} />
-          <Text style={styles.successText}>Akun berhasil dibuat. Silakan masuk.</Text>
+          <Text style={styles.successText}>
+            {confirmation === '1'
+              ? 'Akun berhasil dibuat. Konfirmasi emailmu sebelum masuk.'
+              : 'Akun berhasil dibuat. Silakan masuk.'}
+          </Text>
+        </View>
+      ) : null}
+
+      {serverError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{serverError}</Text>
         </View>
       ) : null}
 
@@ -95,16 +117,6 @@ export default function LoginScreen() {
         />
 
         <View style={styles.optionsRow}>
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: rememberMe }}
-            onPress={() => setRememberMe((current) => !current)}
-            style={styles.rememberRow}>
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-              {rememberMe ? <Check color={colors.white} size={14} strokeWidth={3} /> : null}
-            </View>
-            <Text style={styles.optionText}>Ingat saya</Text>
-          </Pressable>
           <Pressable onPress={() => router.push('/forgot-password')}>
             <Text style={styles.forgotLink}>Lupa kata sandi?</Text>
           </Pressable>
@@ -138,6 +150,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 19,
   },
+  errorBanner: {
+    backgroundColor: colors.coralSoft,
+    borderColor: '#E8B8B2',
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    marginBottom: 18,
+    padding: 12,
+  },
+  errorBannerText: {
+    color: '#8A3932',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
   form: {
     gap: 18,
   },
@@ -146,29 +172,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    justifyContent: 'space-between',
-  },
-  rememberRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  checkbox: {
-    alignItems: 'center',
-    borderColor: colors.line,
-    borderRadius: 4,
-    borderWidth: 1,
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  optionText: {
-    color: colors.muted,
-    fontSize: 14,
+    justifyContent: 'flex-end',
   },
   forgotLink: {
     color: colors.primary,

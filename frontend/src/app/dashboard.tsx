@@ -11,10 +11,23 @@ import {
   Target,
   WalletCards,
 } from 'lucide-react-native';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { BrandMark } from '@/components/brand-mark';
 import { colors, layout } from '@/constants/theme';
+import { getAuthErrorMessage } from '@/lib/auth-errors';
+import { useAuth } from '@/providers/auth-provider';
 
 const quickActions = [
   { color: colors.primary, icon: ArrowDownLeft, label: 'Pemasukan' },
@@ -25,16 +38,43 @@ const quickActions = [
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { loading, session, signOut } = useAuth();
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
+  const metadataName = session?.user.user_metadata.full_name;
+  const firstName =
+    typeof metadataName === 'string' && metadataName.trim()
+      ? metadataName.trim().split(/\s+/)[0]
+      : 'Pengguna';
   const currentPeriod = new Intl.DateTimeFormat('id-ID', {
     month: 'long',
     year: 'numeric',
   }).format(new Date());
 
+  useEffect(() => {
+    if (!loading && !session) router.replace('/welcome');
+  }, [loading, router, session]);
+
   const showNextPhase = (label: string) => {
     Alert.alert(label, 'Menu ini akan disambungkan pada tahap transaksi dan laporan.');
   };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace('/welcome');
+    } catch (error) {
+      Alert.alert('Gagal keluar', getAuthErrorMessage(error));
+    }
+  };
+
+  if (loading || !session) {
+    return (
+      <SafeAreaView style={styles.loadingScreen}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -53,7 +93,7 @@ export default function DashboardScreen() {
               <Pressable
                 accessibilityLabel="Keluar"
                 accessibilityRole="button"
-                onPress={() => router.replace('/welcome')}
+                onPress={() => void handleSignOut()}
                 style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                 <LogOut color={colors.ink} size={20} />
               </Pressable>
@@ -62,7 +102,7 @@ export default function DashboardScreen() {
 
           <View style={styles.greetingRow}>
             <View style={styles.greetingCopy}>
-              <Text style={styles.greeting}>Halo, Gilbran</Text>
+              <Text style={styles.greeting}>Halo, {firstName}</Text>
               <Text style={styles.period}>{currentPeriod}</Text>
             </View>
             <Pressable
@@ -163,6 +203,12 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: {
+    alignItems: 'center',
+    backgroundColor: colors.canvas,
+    flex: 1,
+    justifyContent: 'center',
+  },
   safeArea: {
     backgroundColor: colors.canvas,
     flex: 1,
