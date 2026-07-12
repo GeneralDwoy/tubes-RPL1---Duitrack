@@ -11,7 +11,7 @@ import {
   Target,
   WalletCards,
 } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,13 @@ import {
 import { BrandMark } from '@/components/brand-mark';
 import { colors, layout } from '@/constants/theme';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
+import {
+  formatCurrency,
+  getMonthlySummary,
+  listRecentTransactions,
+  type FinanceTransaction,
+  type MonthlySummary,
+} from '@/lib/finance';
 import { useAuth } from '@/providers/auth-provider';
 
 const quickActions = [
@@ -39,6 +46,13 @@ const quickActions = [
 export default function DashboardScreen() {
   const router = useRouter();
   const { loading, session, signOut } = useAuth();
+  const [dataLoading, setDataLoading] = useState(true);
+  const [summary, setSummary] = useState<MonthlySummary>({
+    balance: 0,
+    expense: 0,
+    income: 0,
+  });
+  const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
   const metadataName = session?.user.user_metadata.full_name;
@@ -55,9 +69,56 @@ export default function DashboardScreen() {
     if (!loading && !session) router.replace('/welcome');
   }, [loading, router, session]);
 
+  useEffect(() => {
+    if (!session) return;
+
+    let active = true;
+
+    Promise.all([getMonthlySummary(), listRecentTransactions(5)])
+      .then(([nextSummary, nextTransactions]) => {
+        if (!active) return;
+        setSummary(nextSummary);
+        setTransactions(nextTransactions);
+      })
+      .catch((error) => {
+        if (active) Alert.alert('Data belum dapat dimuat', getAuthErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) setDataLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
   const showNextPhase = (label: string) => {
     Alert.alert(label, 'Menu ini akan disambungkan pada tahap transaksi dan laporan.');
   };
+
+  const handleQuickAction = (label: string) => {
+    if (label === 'Pemasukan') {
+      router.push({ pathname: '/add-transaction', params: { type: 'income' } });
+      return;
+    }
+
+    if (label === 'Pengeluaran') {
+      router.push({ pathname: '/add-transaction', params: { type: 'expense' } });
+      return;
+    }
+
+    if (label === 'Anggaran') {
+      router.push('/categories');
+      return;
+    }
+
+    showNextPhase(label);
+  };
+
+  const formatTransactionDate = (date: string) =>
+    new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(
+      new Date(`${date}T00:00:00`),
+    );
 
   const handleSignOut = async () => {
     try {
@@ -107,7 +168,7 @@ export default function DashboardScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => showNextPhase('Tambah transaksi')}
+              onPress={() => router.push('/transactions')}
               style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
               <Plus color={colors.white} size={19} strokeWidth={2.5} />
               <Text style={styles.addButtonText}>Tambah transaksi</Text>
@@ -120,8 +181,14 @@ export default function DashboardScreen() {
                 <WalletCards color="#B9D8D1" size={20} />
                 <Text style={styles.balanceLabel}>Saldo saat ini</Text>
               </View>
-              <Text style={styles.balanceValue}>Rp0</Text>
-              <Text style={styles.balanceHint}>Belum ada transaksi pada periode ini</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={styles.balanceValue}>
+                {formatCurrency(summary.balance)}
+              </Text>
+              <Text style={styles.balanceHint}>
+                {summary.income || summary.expense
+                  ? 'Ringkasan transaksi pada periode ini'
+                  : 'Belum ada transaksi pada periode ini'}
+              </Text>
             </View>
             <View style={[styles.balanceStats, isWide && styles.balanceStatsWide]}>
               <View style={styles.statItem}>
@@ -130,7 +197,9 @@ export default function DashboardScreen() {
                 </View>
                 <View>
                   <Text style={styles.statLabel}>Pemasukan</Text>
-                  <Text style={styles.statValue}>Rp0</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
+                    {formatCurrency(summary.income)}
+                  </Text>
                 </View>
               </View>
               <View style={styles.statDivider} />
@@ -140,7 +209,9 @@ export default function DashboardScreen() {
                 </View>
                 <View>
                   <Text style={styles.statLabel}>Pengeluaran</Text>
-                  <Text style={styles.statValue}>Rp0</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
+                    {formatCurrency(summary.expense)}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -156,7 +227,7 @@ export default function DashboardScreen() {
                 <Pressable
                   accessibilityRole="button"
                   key={label}
-                  onPress={() => showNextPhase(label)}
+                  onPress={() => handleQuickAction(label)}
                   style={({ pressed }) => [
                     styles.actionCard,
                     { flexBasis: isWide ? '23%' : '47%' },
@@ -174,19 +245,70 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Transaksi terbaru</Text>
-              <Pressable onPress={() => showNextPhase('Riwayat transaksi')}>
+              <Pressable onPress={() => router.push('/transactions')}>
                 <Text style={styles.sectionLink}>Lihat semua</Text>
               </Pressable>
             </View>
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <ReceiptText color={colors.primary} size={27} />
+            {dataLoading ? (
+              <View style={styles.dataLoading}>
+                <ActivityIndicator color={colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
-              <Text style={styles.emptyText}>
-                Catatan pemasukan atau pengeluaran pertamamu akan muncul di sini.
-              </Text>
-            </View>
+            ) : transactions.length ? (
+              <View style={styles.transactionList}>
+                {transactions.map((transaction) => {
+                  const isIncome = transaction.type === 'income';
+
+                  return (
+                    <View key={`${transaction.type}-${transaction.id}`} style={styles.transactionRow}>
+                      <View
+                        style={[
+                          styles.transactionIcon,
+                          isIncome ? styles.incomeIcon : styles.expenseIcon,
+                        ]}>
+                        {isIncome ? (
+                          <ArrowDownLeft color={colors.primaryDark} size={19} />
+                        ) : (
+                          <ArrowUpRight color={colors.coral} size={19} />
+                        )}
+                      </View>
+                      <View style={styles.transactionCopy}>
+                        <Text numberOfLines={1} style={styles.transactionTitle}>
+                          {transaction.title}
+                        </Text>
+                        <Text numberOfLines={1} style={styles.transactionMeta}>
+                          {[
+                            transaction.categoryName,
+                            transaction.description,
+                            formatTransactionDate(transaction.date),
+                          ]
+                            .filter(Boolean)
+                            .join('  |  ')}
+                        </Text>
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={[
+                          styles.transactionAmount,
+                          isIncome ? styles.incomeAmount : styles.expenseAmount,
+                        ]}>
+                        {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIcon}>
+                  <ReceiptText color={colors.primary} size={27} />
+                </View>
+                <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
+                <Text style={styles.emptyText}>
+                  Catatan pemasukan atau pengeluaran pertamamu akan muncul di sini.
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.insightBand}>
@@ -359,6 +481,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginTop: 3,
+    maxWidth: 135,
   },
   statDivider: {
     backgroundColor: '#2B746A',
@@ -418,6 +541,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  dataLoading: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 120,
+  },
+  transactionList: {
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  transactionRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 11,
+    minHeight: 68,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  transactionIcon: {
+    alignItems: 'center',
+    borderRadius: layout.radius,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  transactionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  transactionTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  transactionMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  transactionAmount: {
+    fontSize: 13,
+    fontWeight: '800',
+    maxWidth: '38%',
+    textAlign: 'right',
+  },
+  incomeAmount: {
+    color: colors.primaryDark,
+  },
+  expenseAmount: {
+    color: colors.coral,
   },
   emptyState: {
     alignItems: 'center',
