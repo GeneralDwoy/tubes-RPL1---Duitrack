@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     minWidth: 0,
+    outlineWidth: 0,
     paddingVertical: 12,
   },
   error: {
