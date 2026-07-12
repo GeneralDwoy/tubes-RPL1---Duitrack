@@ -1,0 +1,430 @@
+import { useRouter } from 'expo-router';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Bell,
+  ChartNoAxesCombined,
+  FileChartColumn,
+  LogOut,
+  Plus,
+  ReceiptText,
+  Target,
+  WalletCards,
+} from 'lucide-react-native';
+import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
+import { BrandMark } from '@/components/brand-mark';
+import { colors, layout } from '@/constants/theme';
+
+const quickActions = [
+  { color: colors.primary, icon: ArrowDownLeft, label: 'Pemasukan' },
+  { color: colors.coral, icon: ArrowUpRight, label: 'Pengeluaran' },
+  { color: colors.amber, icon: Target, label: 'Anggaran' },
+  { color: '#5377A6', icon: FileChartColumn, label: 'Laporan' },
+];
+
+export default function DashboardScreen() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 760;
+  const currentPeriod = new Intl.DateTimeFormat('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
+
+  const showNextPhase = (label: string) => {
+    Alert.alert(label, 'Menu ini akan disambungkan pada tahap transaksi dan laporan.');
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.page}>
+          <View style={styles.header}>
+            <BrandMark />
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel="Notifikasi"
+                accessibilityRole="button"
+                onPress={() => showNextPhase('Notifikasi')}
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+                <Bell color={colors.ink} size={20} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Keluar"
+                accessibilityRole="button"
+                onPress={() => router.replace('/welcome')}
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+                <LogOut color={colors.ink} size={20} />
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.greetingRow}>
+            <View style={styles.greetingCopy}>
+              <Text style={styles.greeting}>Halo, Gilbran</Text>
+              <Text style={styles.period}>{currentPeriod}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => showNextPhase('Tambah transaksi')}
+              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
+              <Plus color={colors.white} size={19} strokeWidth={2.5} />
+              <Text style={styles.addButtonText}>Tambah transaksi</Text>
+            </Pressable>
+          </View>
+
+          <View style={[styles.balancePanel, isWide && styles.balancePanelWide]}>
+            <View style={styles.balanceMain}>
+              <View style={styles.balanceLabelRow}>
+                <WalletCards color="#B9D8D1" size={20} />
+                <Text style={styles.balanceLabel}>Saldo saat ini</Text>
+              </View>
+              <Text style={styles.balanceValue}>Rp0</Text>
+              <Text style={styles.balanceHint}>Belum ada transaksi pada periode ini</Text>
+            </View>
+            <View style={[styles.balanceStats, isWide && styles.balanceStatsWide]}>
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, styles.incomeIcon]}>
+                  <ArrowDownLeft color={colors.primaryDark} size={18} />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>Pemasukan</Text>
+                  <Text style={styles.statValue}>Rp0</Text>
+                </View>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, styles.expenseIcon]}>
+                  <ArrowUpRight color={colors.coral} size={18} />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>Pengeluaran</Text>
+                  <Text style={styles.statValue}>Rp0</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Akses cepat</Text>
+              <Text style={styles.sectionMeta}>Kelola catatan keuangan</Text>
+            </View>
+            <View style={styles.actionGrid}>
+              {quickActions.map(({ color, icon: Icon, label }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={label}
+                  onPress={() => showNextPhase(label)}
+                  style={({ pressed }) => [
+                    styles.actionCard,
+                    { flexBasis: isWide ? '23%' : '47%' },
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={[styles.actionIcon, { backgroundColor: `${color}18` }]}>
+                    <Icon color={color} size={22} strokeWidth={2.2} />
+                  </View>
+                  <Text style={styles.actionLabel}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Transaksi terbaru</Text>
+              <Pressable onPress={() => showNextPhase('Riwayat transaksi')}>
+                <Text style={styles.sectionLink}>Lihat semua</Text>
+              </Pressable>
+            </View>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <ReceiptText color={colors.primary} size={27} />
+              </View>
+              <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
+              <Text style={styles.emptyText}>
+                Catatan pemasukan atau pengeluaran pertamamu akan muncul di sini.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.insightBand}>
+            <ChartNoAxesCombined color={colors.amber} size={24} />
+            <View style={styles.insightCopy}>
+              <Text style={styles.insightTitle}>Ringkasan keuangan menunggumu</Text>
+              <Text style={styles.insightText}>Mulai mencatat untuk melihat pola bulanan.</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  page: {
+    alignSelf: 'center',
+    maxWidth: layout.pageMaxWidth,
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  header: {
+    alignItems: 'center',
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 18,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.98 }],
+  },
+  greetingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'space-between',
+    paddingBottom: 22,
+    paddingTop: 28,
+  },
+  greetingCopy: {
+    gap: 5,
+  },
+  greeting: {
+    color: colors.ink,
+    fontSize: 27,
+    fontWeight: '800',
+  },
+  period: {
+    color: colors.muted,
+    fontSize: 14,
+    textTransform: 'capitalize',
+  },
+  addButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: layout.radius,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 15,
+  },
+  addButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  balancePanel: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: layout.radius,
+    gap: 24,
+    padding: 24,
+  },
+  balancePanelWide: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  balanceMain: {
+    gap: 7,
+  },
+  balanceLabelRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  balanceLabel: {
+    color: '#D7E8E4',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  balanceValue: {
+    color: colors.white,
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  balanceHint: {
+    color: '#B9D8D1',
+    fontSize: 13,
+  },
+  balanceStats: {
+    borderTopColor: '#2B746A',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 20,
+  },
+  balanceStatsWide: {
+    borderLeftColor: '#2B746A',
+    borderLeftWidth: 1,
+    borderTopWidth: 0,
+    minWidth: 390,
+    paddingLeft: 28,
+    paddingTop: 0,
+  },
+  statItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statIcon: {
+    alignItems: 'center',
+    borderRadius: layout.radius,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  incomeIcon: {
+    backgroundColor: colors.primarySoft,
+  },
+  expenseIcon: {
+    backgroundColor: colors.coralSoft,
+  },
+  statLabel: {
+    color: '#B9D8D1',
+    fontSize: 12,
+  },
+  statValue: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  statDivider: {
+    backgroundColor: '#2B746A',
+    width: 1,
+  },
+  section: {
+    marginTop: 30,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sectionMeta: {
+    color: colors.muted,
+    fontSize: 13,
+  },
+  sectionLink: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  actionCard: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    flexGrow: 1,
+    gap: 10,
+    minHeight: 104,
+    justifyContent: 'center',
+    padding: 14,
+  },
+  actionIcon: {
+    alignItems: 'center',
+    borderRadius: layout.radius,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  actionLabel: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 34,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: layout.radius,
+    height: 52,
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: 52,
+  },
+  emptyTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 5,
+    maxWidth: 380,
+    textAlign: 'center',
+  },
+  insightBand: {
+    alignItems: 'center',
+    backgroundColor: colors.amberSoft,
+    borderRadius: layout.radius,
+    flexDirection: 'row',
+    gap: 13,
+    marginTop: 26,
+    padding: 16,
+  },
+  insightCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  insightTitle: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  insightText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+});

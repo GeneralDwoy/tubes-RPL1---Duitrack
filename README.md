@@ -23,6 +23,10 @@ DuiTrack adalah aplikasi pencatatan keuangan pribadi yang dirancang untuk berjal
 - `frontend/` - aplikasi Expo untuk Android, iOS, dan web
 - Dokumen analisis dan folder ekstraksi tetap disimpan secara lokal dan diabaikan oleh Git
 
+## Status Pengembangan
+
+Fondasi antarmuka sudah tersedia untuk splash screen, halaman sambutan, login, registrasi, pemulihan kata sandi, dan dashboard awal. Validasi formulir berjalan secara lokal; autentikasi dan penyimpanan data akan dihubungkan ke Supabase pada tahap berikutnya.
+
 ## Menjalankan Aplikasi
 
 Masuk ke folder `frontend`, lalu jalankan:
