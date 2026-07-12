@@ -18,4 +18,17 @@ DuiTrack adalah aplikasi pencatatan keuangan pribadi yang dirancang untuk berjal
 - Laporan serta evaluasi kondisi keuangan
 - Ekspor laporan PDF dan Excel
 
-Project aplikasi belum dibuat. Repository ini disiapkan sebagai titik awal pengembangan DuiTrack.
+## Struktur Repository
+
+- `frontend/` - aplikasi Expo untuk Android, iOS, dan web
+- Dokumen analisis dan folder ekstraksi tetap disimpan secara lokal dan diabaikan oleh Git
+
+## Menjalankan Aplikasi
+
+Masuk ke folder `frontend`, lalu jalankan:
+
+```bash
+npm start
+```
+
+Gunakan tombol `a` untuk Android, `w` untuk web, atau pindai kode QR melalui Expo Go.
