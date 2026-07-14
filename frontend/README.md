@@ -10,6 +10,8 @@ Instal dependensi setelah repository di-clone:
 npm install
 ```
 
+Buat file `.env` berdasarkan `.env.example`, kemudian isi URL dan publishable key Supabase. Jangan commit file `.env`.
+
 ## Menjalankan Project
 
 ```bash
@@ -33,3 +35,14 @@ npx expo export --platform web
 ```
 
 Kode halaman berada di `src/app` dan menggunakan routing berdasarkan struktur file.
+
+## Fitur MVP
+
+- Autentikasi dan pemulihan akun Supabase
+- Dashboard saldo dan transaksi terbaru
+- CRUD kategori, anggaran, pemasukan, dan pengeluaran
+- Validasi saldo serta sisa anggaran real-time
+- Pencarian dan filter transaksi berdasarkan tanggal, bulan, atau tahun
+- Laporan bulanan dan evaluasi anggaran per kategori
+- Ekspor Excel (CSV) dan PDF di web maupun Expo Go
+- Profil, perubahan kata sandi, dan notifikasi anggaran

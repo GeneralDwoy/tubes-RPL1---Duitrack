@@ -1,5 +1,13 @@
 import { useRouter } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, Pencil, ReceiptText, Trash2 } from 'lucide-react-native';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarDays,
+  Pencil,
+  ReceiptText,
+  Search,
+  Trash2,
+} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,10 +17,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
+import { AppBottomNav } from '@/components/app-bottom-nav';
 import { colors, layout } from '@/constants/theme';
 import {
   deleteTransaction,
@@ -23,12 +33,31 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 
 type TransactionFilter = 'all' | 'income' | 'expense';
+type PeriodFilter = 'all' | 'date' | 'month' | 'year';
 
 const filters: { label: string; value: TransactionFilter }[] = [
   { label: 'Semua', value: 'all' },
   { label: 'Pemasukan', value: 'income' },
   { label: 'Pengeluaran', value: 'expense' },
 ];
+
+const periodFilters: { label: string; value: PeriodFilter }[] = [
+  { label: 'Semua', value: 'all' },
+  { label: 'Tanggal', value: 'date' },
+  { label: 'Bulan', value: 'month' },
+  { label: 'Tahun', value: 'year' },
+];
+
+function getDefaultPeriodValue(filter: PeriodFilter) {
+  const date = new Date();
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  if (filter === 'date') return `${year}-${month}-${day}`;
+  if (filter === 'month') return `${year}-${month}`;
+  if (filter === 'year') return year;
+  return '';
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('id-ID', {
@@ -42,6 +71,9 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const { loading: authLoading, session } = useAuth();
   const [filter, setFilter] = useState<TransactionFilter>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [periodValue, setPeriodValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -52,7 +84,7 @@ export default function TransactionsScreen() {
 
   useEffect(() => {
     if (!session) return;
-    listRecentTransactions(100)
+    listRecentTransactions(1000)
       .then(setTransactions)
       .catch((error) => Alert.alert('Gagal memuat transaksi', error.message))
       .finally(() => setLoading(false));
@@ -66,9 +98,34 @@ export default function TransactionsScreen() {
     );
   }
 
-  const visibleTransactions = transactions.filter(
-    (transaction) => filter === 'all' || transaction.type === filter,
-  );
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase('id-ID');
+  const visibleTransactions = transactions.filter((transaction) => {
+    const matchesType = filter === 'all' || transaction.type === filter;
+    const matchesPeriod =
+      periodFilter === 'all' ||
+      Boolean(
+        periodValue &&
+          ((periodFilter === 'date' && transaction.date === periodValue) ||
+            (periodFilter === 'month' && transaction.date.startsWith(periodValue)) ||
+            (periodFilter === 'year' && transaction.date.startsWith(periodValue))),
+      );
+    const searchableText = [
+      transaction.title,
+      transaction.categoryName,
+      transaction.description,
+      formatCurrency(transaction.amount),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('id-ID');
+    const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+    return matchesType && matchesPeriod && matchesSearch;
+  });
+
+  const selectPeriodFilter = (nextFilter: PeriodFilter) => {
+    setPeriodFilter(nextFilter);
+    setPeriodValue(getDefaultPeriodValue(nextFilter));
+  };
 
   const confirmDelete = (transaction: FinanceTransaction) => {
     Alert.alert(
@@ -104,7 +161,8 @@ export default function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.page}>
+      <View style={styles.screen}>
+        <View style={styles.page}>
         <ScreenHeader subtitle="Cari kembali catatan pemasukan dan pengeluaran" title="Riwayat transaksi" />
 
         <View style={styles.actionRow}>
@@ -135,6 +193,66 @@ export default function TransactionsScreen() {
           ))}
         </View>
 
+        <View style={styles.filterArea}>
+          <View style={styles.searchShell}>
+            <Search color={colors.muted} size={18} />
+            <TextInput
+              accessibilityLabel="Cari transaksi"
+              onChangeText={setSearchQuery}
+              placeholder="Cari transaksi atau kategori"
+              placeholderTextColor="#8A9A96"
+              style={styles.searchInput}
+              value={searchQuery}
+            />
+          </View>
+
+          <View style={styles.periodSegmented}>
+            {periodFilters.map((item) => (
+              <Pressable
+                accessibilityRole="button"
+                key={item.value}
+                onPress={() => selectPeriodFilter(item.value)}
+                style={[
+                  styles.periodSegment,
+                  periodFilter === item.value && styles.periodSegmentActive,
+                ]}>
+                <Text
+                  style={[
+                    styles.periodSegmentText,
+                    periodFilter === item.value && styles.periodSegmentTextActive,
+                  ]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {periodFilter !== 'all' ? (
+            <View style={styles.periodInputShell}>
+              <CalendarDays color={colors.muted} size={18} />
+              <TextInput
+                accessibilityLabel={`Filter ${periodFilter}`}
+                maxLength={periodFilter === 'date' ? 10 : periodFilter === 'month' ? 7 : 4}
+                onChangeText={setPeriodValue}
+                placeholder={
+                  periodFilter === 'date'
+                    ? 'YYYY-MM-DD'
+                    : periodFilter === 'month'
+                      ? 'YYYY-MM'
+                      : 'YYYY'
+                }
+                placeholderTextColor="#8A9A96"
+                style={styles.periodInput}
+                value={periodValue}
+              />
+            </View>
+          ) : null}
+
+          {!loading ? (
+            <Text style={styles.resultCount}>{visibleTransactions.length} transaksi ditemukan</Text>
+          ) : null}
+        </View>
+
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {loading ? (
             <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
@@ -142,7 +260,11 @@ export default function TransactionsScreen() {
             <View style={styles.emptyState}>
               <ReceiptText color={colors.primary} size={30} />
               <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
-              <Text style={styles.emptyText}>Transaksi yang tersimpan akan tampil di sini.</Text>
+              <Text style={styles.emptyText}>
+                {transactions.length
+                  ? 'Tidak ada transaksi yang sesuai dengan pencarian atau filter.'
+                  : 'Transaksi yang tersimpan akan tampil di sini.'}
+              </Text>
             </View>
           ) : (
             visibleTransactions.map((transaction) => {
@@ -205,6 +327,8 @@ export default function TransactionsScreen() {
             })
           )}
         </ScrollView>
+        </View>
+        <AppBottomNav />
       </View>
     </SafeAreaView>
   );
@@ -212,6 +336,7 @@ export default function TransactionsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.canvas, flex: 1 },
+  screen: { flex: 1 },
   loadingScreen: {
     alignItems: 'center',
     backgroundColor: colors.canvas,
@@ -252,6 +377,57 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.surface },
   segmentText: { color: colors.muted, fontSize: 13, fontWeight: '700' },
   segmentTextActive: { color: colors.primaryDark },
+  filterArea: { gap: 10, marginTop: 12 },
+  searchShell: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 46,
+    paddingHorizontal: 13,
+  },
+  searchInput: {
+    borderWidth: 0,
+    color: colors.ink,
+    flex: 1,
+    fontSize: 14,
+    minWidth: 0,
+    outlineWidth: 0,
+    paddingVertical: 10,
+  },
+  periodSegmented: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: layout.radius,
+    flexDirection: 'row',
+    padding: 4,
+  },
+  periodSegment: { alignItems: 'center', borderRadius: 6, flex: 1, minHeight: 34, justifyContent: 'center' },
+  periodSegmentActive: { backgroundColor: colors.surface },
+  periodSegmentText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  periodSegmentTextActive: { color: colors.primaryDark },
+  periodInputShell: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 44,
+    paddingHorizontal: 13,
+  },
+  periodInput: {
+    borderWidth: 0,
+    color: colors.ink,
+    flex: 1,
+    fontSize: 14,
+    outlineWidth: 0,
+    paddingVertical: 9,
+  },
+  resultCount: { color: colors.muted, fontSize: 11 },
   list: { gap: 9, paddingBottom: 40, paddingTop: 16 },
   loader: { marginTop: 40 },
   transactionRow: {

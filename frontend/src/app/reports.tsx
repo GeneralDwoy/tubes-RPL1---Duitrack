@@ -5,6 +5,8 @@ import {
   ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
+  FileText,
   PiggyBank,
   Target,
   WalletCards,
@@ -23,8 +25,16 @@ import {
 } from 'react-native';
 
 import { ScreenHeader } from '@/components/screen-header';
+import { AppBottomNav } from '@/components/app-bottom-nav';
 import { colors, layout } from '@/constants/theme';
-import { formatCurrency, getMonthlyReport, type MonthlyReport } from '@/lib/finance';
+import {
+  formatCurrency,
+  getMonthlyReport,
+  listMonthlyTransactions,
+  type FinanceTransaction,
+  type MonthlyReport,
+} from '@/lib/finance';
+import { exportMonthlyReport, type ReportExportFormat } from '@/lib/report-export';
 import { useAuth } from '@/providers/auth-provider';
 
 function startOfMonth(date: Date) {
@@ -43,7 +53,9 @@ export default function ReportsScreen() {
   const currentMonth = startOfMonth(new Date());
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/welcome');
@@ -53,9 +65,11 @@ export default function ReportsScreen() {
     if (!session) return;
 
     let active = true;
-    getMonthlyReport(selectedMonth)
-      .then((nextReport) => {
-        if (active) setReport(nextReport);
+    Promise.all([getMonthlyReport(selectedMonth), listMonthlyTransactions(selectedMonth)])
+      .then(([nextReport, nextTransactions]) => {
+        if (!active) return;
+        setReport(nextReport);
+        setTransactions(nextTransactions);
       })
       .catch((error) => {
         if (active) {
@@ -79,7 +93,29 @@ export default function ReportsScreen() {
     if (nextMonth > currentMonth) return;
     setLoading(true);
     setReport(null);
+    setTransactions([]);
     setSelectedMonth(nextMonth);
+  };
+
+  const handleExport = async (format: ReportExportFormat) => {
+    if (!report) return;
+    setExporting(format);
+    try {
+      await exportMonthlyReport(report, transactions, format);
+      Alert.alert(
+        'Laporan disiapkan',
+        format === 'excel'
+          ? 'File Excel (CSV) sudah dibuat.'
+          : 'Pilih Simpan sebagai PDF pada dialog cetak atau berbagi.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Ekspor laporan gagal',
+        error instanceof Error ? error.message : 'Silakan coba kembali.',
+      );
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (authLoading || !session) {
@@ -127,8 +163,9 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.page}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.page}>
           <ScreenHeader subtitle="Pantau arus kas dan pemakaian anggaran" title="Laporan keuangan" />
 
           <View style={styles.periodRow}>
@@ -199,6 +236,39 @@ export default function ReportsScreen() {
                         ? `${formatCurrency(summary.balance)} masih tersisa dari pemasukan bulan ini.`
                         : `Defisit bulan ini sebesar ${formatCurrency(Math.abs(summary.balance))}.`}
                   </Text>
+                </View>
+              </View>
+
+              <View style={styles.exportBand}>
+                <View style={styles.exportCopy}>
+                  <Text style={styles.exportTitle}>Ekspor laporan</Text>
+                  <Text style={styles.exportText}>Simpan riwayat bulan ini sebagai Excel atau PDF.</Text>
+                </View>
+                <View style={styles.exportActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={Boolean(exporting)}
+                    onPress={() => void handleExport('excel')}
+                    style={({ pressed }) => [styles.exportButton, pressed && styles.pressed]}>
+                    {exporting === 'excel' ? (
+                      <ActivityIndicator color={colors.primaryDark} size="small" />
+                    ) : (
+                      <FileSpreadsheet color={colors.primaryDark} size={18} />
+                    )}
+                    <Text style={styles.exportButtonText}>Excel</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={Boolean(exporting)}
+                    onPress={() => void handleExport('pdf')}
+                    style={({ pressed }) => [styles.exportButton, pressed && styles.pressed]}>
+                    {exporting === 'pdf' ? (
+                      <ActivityIndicator color={colors.coral} size="small" />
+                    ) : (
+                      <FileText color={colors.coral} size={18} />
+                    )}
+                    <Text style={styles.exportButtonText}>PDF</Text>
+                  </Pressable>
                 </View>
               </View>
 
@@ -312,14 +382,17 @@ export default function ReportsScreen() {
               </View>
             </>
           )}
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+        <AppBottomNav />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.canvas, flex: 1 },
+  screen: { flex: 1 },
   loadingScreen: {
     alignItems: 'center',
     backgroundColor: colors.canvas,
@@ -390,6 +463,35 @@ const styles = StyleSheet.create({
   insightCopy: { flex: 1, gap: 3, minWidth: 0 },
   insightTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
   insightText: { color: colors.muted, fontSize: 12, lineHeight: 18 },
+  exportBand: {
+    alignItems: 'center',
+    borderBottomColor: colors.line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingBottom: 18,
+  },
+  exportCopy: { flex: 1, minWidth: 210 },
+  exportTitle: { color: colors.ink, fontSize: 15, fontWeight: '800' },
+  exportText: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  exportActions: { flexDirection: 'row', gap: 8 },
+  exportButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 40,
+    minWidth: 92,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  exportButtonText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
   section: {
     backgroundColor: colors.surface,
     borderColor: colors.line,

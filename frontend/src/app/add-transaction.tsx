@@ -22,10 +22,15 @@ import { colors, layout } from '@/constants/theme';
 import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency-input';
 import {
   type Category,
+  type CategoryBudgetStatus,
   type CategoryKind,
+  type EditableTransaction,
   FinanceValidationError,
   createExpense,
   createIncome,
+  formatCurrency,
+  getCategoryBudgetStatus,
+  getMonthlySummary,
   getTransaction,
   listCategories,
   updateExpense,
@@ -68,6 +73,9 @@ export default function AddTransactionScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [recordLoading, setRecordLoading] = useState(Boolean(transactionId));
+  const [loadedTransaction, setLoadedTransaction] = useState<EditableTransaction | null>(null);
+  const [budgetStatus, setBudgetStatus] = useState<CategoryBudgetStatus | null>(null);
+  const [monthBalance, setMonthBalance] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -87,6 +95,8 @@ export default function AddTransactionScreen() {
     resolver: zodResolver(transactionSchema),
   });
   const selectedCategoryId = useWatch({ control, name: 'categoryId' });
+  const selectedAmount = useWatch({ control, name: 'amount' });
+  const selectedDate = useWatch({ control, name: 'date' });
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/welcome');
@@ -110,6 +120,7 @@ export default function AddTransactionScreen() {
     getTransaction(type, transactionId)
       .then((transaction) => {
         if (!active) return;
+        setLoadedTransaction(transaction);
         reset({
           amount: formatCurrencyInput(String(transaction.amount)),
           categoryId: transaction.categoryId,
@@ -134,6 +145,28 @@ export default function AddTransactionScreen() {
       active = false;
     };
   }, [reset, router, session, transactionId, type]);
+
+  useEffect(() => {
+    if (type !== 'expense' || !session || !selectedCategoryId || !selectedDate) return;
+
+    let active = true;
+    Promise.all([
+      getCategoryBudgetStatus(selectedCategoryId, selectedDate),
+      getMonthlySummary(selectedDate),
+    ])
+      .then(([nextBudgetStatus, summary]) => {
+        if (!active) return;
+        setBudgetStatus(nextBudgetStatus);
+        setMonthBalance(summary.balance);
+      })
+      .catch(() => {
+        if (active) setBudgetStatus(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCategoryId, selectedDate, session, type]);
 
   const onSubmit = async (values: TransactionValues) => {
     setServerError(null);
@@ -189,6 +222,26 @@ export default function AddTransactionScreen() {
       </SafeAreaView>
     );
   }
+
+  const enteredAmount = parseCurrencyInput(selectedAmount);
+  const editingSameMonth =
+    loadedTransaction?.type === 'expense' &&
+    loadedTransaction.date.slice(0, 7) === selectedDate.slice(0, 7);
+  const editingSameCategory =
+    editingSameMonth && loadedTransaction?.categoryId === selectedCategoryId;
+  const availableBalance = monthBalance + (editingSameMonth ? loadedTransaction.amount : 0);
+  const spentBeforeTransaction = Math.max(
+    (budgetStatus?.spent ?? 0) - (editingSameCategory ? loadedTransaction.amount : 0),
+    0,
+  );
+  const projectedSpending = spentBeforeTransaction + enteredAmount;
+  const budgetRemaining = (budgetStatus?.budget ?? 0) - projectedSpending;
+  const budgetProgress = budgetStatus?.budget
+    ? Math.min((projectedSpending / budgetStatus.budget) * 100, 100)
+    : 0;
+  const availabilityWarning =
+    enteredAmount > availableBalance ||
+    Boolean(budgetStatus?.budget && projectedSpending > budgetStatus.budget);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -260,7 +313,10 @@ export default function AddTransactionScreen() {
             <CategoryPicker
               categories={categories}
               error={type === 'expense' && serverError?.includes('Kategori') ? serverError : undefined}
-              onChange={(value) => setValue('categoryId', value, { shouldValidate: true })}
+              onChange={(value) => {
+                setBudgetStatus(null);
+                setValue('categoryId', value, { shouldValidate: true });
+              }}
               onClose={() => setPickerOpen(false)}
               onOpen={() => setPickerOpen(true)}
               open={pickerOpen}
@@ -276,6 +332,38 @@ export default function AddTransactionScreen() {
               />
             </View>
           )}
+
+          {type === 'expense' && selectedCategoryId && budgetStatus ? (
+            <View style={[styles.budgetBand, availabilityWarning && styles.budgetBandWarning]}>
+              <View style={styles.budgetLine}>
+                <Text style={styles.budgetLabel}>Saldo tersedia bulan ini</Text>
+                <Text style={[styles.budgetValue, availabilityWarning && styles.warningText]}>
+                  {formatCurrency(availableBalance)}
+                </Text>
+              </View>
+              {budgetStatus.budget > 0 ? (
+                <>
+                  <View style={styles.budgetLine}>
+                    <Text style={styles.budgetLabel}>Sisa anggaran setelah transaksi</Text>
+                    <Text style={[styles.budgetValue, budgetRemaining < 0 && styles.warningText]}>
+                      {formatCurrency(Math.max(budgetRemaining, 0))}
+                    </Text>
+                  </View>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        availabilityWarning && styles.progressFillWarning,
+                        { width: `${budgetProgress}%` as `${number}%` },
+                      ]}
+                    />
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.noBudgetText}>Kategori ini belum memiliki batas anggaran.</Text>
+              )}
+            </View>
+          ) : null}
 
           {type === 'income' ? (
             <Controller
@@ -377,4 +465,19 @@ const styles = StyleSheet.create({
   },
   noCategory: { gap: 12 },
   noCategoryText: { color: colors.muted, fontSize: 13, lineHeight: 19 },
+  budgetBand: {
+    backgroundColor: colors.amberSoft,
+    borderRadius: layout.radius,
+    gap: 9,
+    padding: 13,
+  },
+  budgetBandWarning: { backgroundColor: colors.coralSoft },
+  budgetLine: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+  budgetLabel: { color: colors.muted, flex: 1, fontSize: 12 },
+  budgetValue: { color: colors.ink, fontSize: 12, fontWeight: '800', maxWidth: '45%', textAlign: 'right' },
+  warningText: { color: colors.coral },
+  progressTrack: { backgroundColor: colors.surface, borderRadius: 4, height: 7, overflow: 'hidden' },
+  progressFill: { backgroundColor: colors.amber, borderRadius: 4, height: '100%' },
+  progressFillWarning: { backgroundColor: colors.coral },
+  noBudgetText: { color: colors.muted, fontSize: 11 },
 });

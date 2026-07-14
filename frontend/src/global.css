@@ -13,3 +13,21 @@ body,
 * {
   box-sizing: border-box;
 }
+
+input,
+textarea {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}

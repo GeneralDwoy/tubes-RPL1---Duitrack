@@ -9,6 +9,7 @@ import {
   Plus,
   ReceiptText,
   Target,
+  UserRound,
   WalletCards,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -25,6 +26,7 @@ import {
 } from 'react-native';
 
 import { BrandMark } from '@/components/brand-mark';
+import { AppBottomNav } from '@/components/app-bottom-nav';
 import { colors, layout } from '@/constants/theme';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 import {
@@ -144,17 +146,25 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.page}>
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.page}>
           <View style={styles.header}>
             <BrandMark />
             <View style={styles.headerActions}>
               <Pressable
                 accessibilityLabel="Notifikasi"
                 accessibilityRole="button"
-                onPress={() => showNextPhase('Notifikasi')}
+                onPress={() => router.push('/notifications')}
                 style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                 <Bell color={colors.ink} size={20} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Profil dan pengaturan"
+                accessibilityRole="button"
+                onPress={() => router.push('/profile')}
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+                <UserRound color={colors.ink} size={20} />
               </Pressable>
               <Pressable
                 accessibilityLabel="Keluar"
@@ -323,8 +333,10 @@ export default function DashboardScreen() {
               <Text style={styles.insightText}>Mulai mencatat untuk melihat pola bulanan.</Text>
             </View>
           </View>
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+        <AppBottomNav />
+      </View>
     </SafeAreaView>
   );
 }
@@ -340,6 +352,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     flex: 1,
   },
+  screen: { flex: 1 },
   scrollContent: {
     paddingBottom: 40,
   },

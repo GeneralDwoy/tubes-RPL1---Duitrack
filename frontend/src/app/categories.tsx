@@ -19,6 +19,7 @@ import {
 import { z } from 'zod';
 
 import { AppButton } from '@/components/app-button';
+import { AppBottomNav } from '@/components/app-bottom-nav';
 import { FormField } from '@/components/form-field';
 import { ScreenHeader } from '@/components/screen-header';
 import { colors, layout } from '@/constants/theme';
@@ -169,7 +170,8 @@ export default function CategoriesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.page}>
+      <View style={styles.screen}>
+        <View style={styles.page}>
         <ScreenHeader
           action={
             <Pressable
@@ -237,6 +239,8 @@ export default function CategoriesScreen() {
             ))
           )}
         </ScrollView>
+        </View>
+        <AppBottomNav />
       </View>
 
       <Modal
@@ -359,6 +363,7 @@ export default function CategoriesScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.canvas, flex: 1 },
+  screen: { flex: 1 },
   loadingScreen: {
     alignItems: 'center',
     backgroundColor: colors.canvas,

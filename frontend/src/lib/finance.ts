@@ -40,6 +40,12 @@ export type MonthlySummary = {
   income: number;
 };
 
+export type CategoryBudgetStatus = {
+  budget: number;
+  categoryName: string;
+  spent: number;
+};
+
 export type ReportCategory = {
   budget: number;
   color: string;
@@ -318,6 +324,18 @@ async function getCategorySpending(categoryId: string, date: string) {
   return (data ?? []).reduce((total, item) => total + Number(item.nominal), 0);
 }
 
+export async function getCategoryBudgetStatus(categoryId: string, date: string) {
+  const categories = await listCategories('pengeluaran');
+  const category = categories.find((item) => item.id_kategori === categoryId);
+  if (!category) throw new FinanceValidationError('Kategori pengeluaran tidak ditemukan.');
+
+  return {
+    budget: category.target_anggaran,
+    categoryName: category.nama_kategori,
+    spent: await getCategorySpending(categoryId, date),
+  } satisfies CategoryBudgetStatus;
+}
+
 export async function createIncome(input: IncomeInput) {
   const userId = await requireUserId();
   const { data: header, error: headerError } = await supabase
@@ -585,4 +603,10 @@ export async function listRecentTransactions(limit = 10) {
   return [...incomes, ...expenses]
     .sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`))
     .slice(0, limit) satisfies FinanceTransaction[];
+}
+
+export async function listMonthlyTransactions(dateValue: Date) {
+  const monthPrefix = `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, '0')}`;
+  const transactions = await listRecentTransactions(1000);
+  return transactions.filter((transaction) => transaction.date.startsWith(monthPrefix));
 }
