@@ -105,8 +105,8 @@ export default function ReportsScreen() {
       Alert.alert(
         'Laporan disiapkan',
         format === 'excel'
-          ? 'File Excel (CSV) sudah dibuat.'
-          : 'Pilih Simpan sebagai PDF pada dialog cetak atau berbagi.',
+          ? 'File Excel (.xlsx) sudah dibuat dengan tabel ringkasan, transaksi, dan anggaran.'
+          : 'File PDF sudah dibuat. Periksa folder unduhan atau menu berbagi perangkat.',
       );
     } catch (error) {
       Alert.alert(
@@ -166,7 +166,11 @@ export default function ReportsScreen() {
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.page}>
-          <ScreenHeader subtitle="Pantau arus kas dan pemakaian anggaran" title="Laporan keuangan" />
+          <ScreenHeader
+            backHref="/dashboard"
+            subtitle="Pantau arus kas dan pemakaian anggaran"
+            title="Laporan keuangan"
+          />
 
           <View style={styles.periodRow}>
             <Pressable

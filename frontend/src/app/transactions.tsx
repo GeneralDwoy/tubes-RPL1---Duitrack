@@ -163,7 +163,11 @@ export default function TransactionsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.page}>
-        <ScreenHeader subtitle="Cari kembali catatan pemasukan dan pengeluaran" title="Riwayat transaksi" />
+        <ScreenHeader
+          backHref="/dashboard"
+          subtitle="Cari kembali catatan pemasukan dan pengeluaran"
+          title="Riwayat transaksi"
+        />
 
         <View style={styles.actionRow}>
           <Pressable

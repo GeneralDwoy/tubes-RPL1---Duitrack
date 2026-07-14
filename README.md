@@ -27,7 +27,7 @@ DuiTrack adalah aplikasi pencatatan keuangan pribadi yang dirancang untuk berjal
 
 ## Status Pengembangan
 
-MVP DuiTrack sudah mencakup seluruh kebutuhan fungsional utama: autentikasi, kategori dan anggaran, transaksi pemasukan/pengeluaran, validasi saldo, pencarian dan filter riwayat, laporan bulanan, evaluasi anggaran, serta ekspor Excel (CSV) dan PDF. Semua halaman data dilindungi oleh sesi Supabase dan Row Level Security.
+MVP DuiTrack sudah mencakup seluruh kebutuhan fungsional utama: autentikasi, kategori dan anggaran, transaksi pemasukan/pengeluaran, validasi saldo, pencarian dan filter riwayat, laporan bulanan, evaluasi anggaran, serta ekspor Excel (`.xlsx`) dan PDF. Semua halaman data dilindungi oleh sesi Supabase dan Row Level Security.
 
 Skema database tersedia di `supabase/schema.sql`, sedangkan langkah pembuatan project dan pemasangan key dijelaskan di `docs/SUPABASE_SETUP.md`.
 
@@ -41,6 +41,14 @@ npm start
 ```
 
 Gunakan tombol `a` untuk Android, `w` untuk web, atau pindai kode QR melalui Expo Go.
+
+Untuk demo pada HP fisik, pastikan HP dan laptop berada pada jaringan yang sama lalu jalankan:
+
+```bash
+npm run mobile
+```
+
+Jika QR tidak terbaca, buka Expo Go dan masukkan URL `exp://IP-LAPTOP:8081`. Alamat IP laptop dapat dilihat dengan perintah `ipconfig`. Mode tunnel tersedia melalui `npm run mobile:tunnel`, tetapi bergantung pada layanan ngrok dan dapat mengalami timeout.
 
 Untuk menjalankan web secara langsung:
 

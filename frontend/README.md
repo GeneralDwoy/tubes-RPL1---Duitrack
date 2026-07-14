@@ -1,6 +1,6 @@
 # DuiTrack Frontend
 
-Aplikasi Expo SDK 57 dengan React Native, TypeScript, dan Expo Router. Basis kode yang sama digunakan untuk Android, iOS, dan web.
+Aplikasi Expo SDK 54 dengan React Native, TypeScript, dan Expo Router. Basis kode yang sama digunakan untuk Android, iOS, dan web serta kompatibel dengan Expo Go pada perangkat fisik.
 
 ## Persiapan
 
@@ -19,6 +19,20 @@ npm start
 ```
 
 Pada terminal Expo, tekan `a` untuk Android atau `w` untuk web. Untuk ponsel fisik, pindai kode QR melalui Expo Go.
+
+Mode khusus HP fisik:
+
+```bash
+npm run mobile
+```
+
+Laptop dan HP harus berada pada jaringan yang sama. Jika kamera gagal memindai QR, pilih opsi memasukkan URL di Expo Go dan gunakan `exp://IP-LAPTOP:8081`. Jalankan `ipconfig` untuk melihat alamat IPv4 laptop.
+
+Jalur tunnel dapat dicoba jika LAN diblokir:
+
+```bash
+npm run mobile:tunnel
+```
 
 Perintah khusus web:
 
@@ -39,10 +53,10 @@ Kode halaman berada di `src/app` dan menggunakan routing berdasarkan struktur fi
 ## Fitur MVP
 
 - Autentikasi dan pemulihan akun Supabase
-- Dashboard saldo dan transaksi terbaru
+- Dashboard saldo, anggaran, rasio tabungan, insight, dan transaksi terbaru
 - CRUD kategori, anggaran, pemasukan, dan pengeluaran
 - Validasi saldo serta sisa anggaran real-time
 - Pencarian dan filter transaksi berdasarkan tanggal, bulan, atau tahun
 - Laporan bulanan dan evaluasi anggaran per kategori
-- Ekspor Excel (CSV) dan PDF di web maupun Expo Go
+- Ekspor Excel (`.xlsx`) bertabel dan PDF langsung di web maupun Expo Go
 - Profil, perubahan kata sandi, dan notifikasi anggaran

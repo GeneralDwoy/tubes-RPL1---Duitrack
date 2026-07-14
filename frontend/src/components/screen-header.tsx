@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,12 +7,27 @@ import { colors, layout } from '@/constants/theme';
 
 type ScreenHeaderProps = {
   action?: ReactNode;
+  backHref?: Href;
   subtitle?: string;
   title: string;
 };
 
-export function ScreenHeader({ action, subtitle, title }: ScreenHeaderProps) {
+export function ScreenHeader({ action, backHref, subtitle, title }: ScreenHeaderProps) {
   const router = useRouter();
+
+  const handleBack = () => {
+    if (backHref) {
+      router.replace(backHref);
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/dashboard');
+  };
 
   return (
     <View style={styles.header}>
@@ -20,7 +35,7 @@ export function ScreenHeader({ action, subtitle, title }: ScreenHeaderProps) {
         accessibilityLabel="Kembali"
         accessibilityRole="button"
         hitSlop={8}
-        onPress={() => router.back()}
+        onPress={handleBack}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
         <ArrowLeft color={colors.ink} size={21} />
       </Pressable>

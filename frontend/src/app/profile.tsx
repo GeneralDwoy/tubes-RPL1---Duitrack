@@ -128,7 +128,11 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-        <ScreenHeader subtitle="Kelola identitas dan keamanan akun" title="Profil & pengaturan" />
+        <ScreenHeader
+          backHref="/dashboard"
+          subtitle="Kelola identitas dan keamanan akun"
+          title="Profil & pengaturan"
+        />
 
         <View style={styles.identityBand}>
           <View style={styles.avatar}>

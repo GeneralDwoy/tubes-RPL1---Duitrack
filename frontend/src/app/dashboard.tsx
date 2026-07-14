@@ -6,6 +6,7 @@ import {
   ChartNoAxesCombined,
   FileChartColumn,
   LogOut,
+  PiggyBank,
   Plus,
   ReceiptText,
   Target,
@@ -31,10 +32,11 @@ import { colors, layout } from '@/constants/theme';
 import { getAuthErrorMessage } from '@/lib/auth-errors';
 import {
   formatCurrency,
-  getMonthlySummary,
+  getMonthlyReport,
   listRecentTransactions,
   type FinanceTransaction,
   type MonthlySummary,
+  type ReportCategory,
 } from '@/lib/finance';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -54,6 +56,7 @@ export default function DashboardScreen() {
     expense: 0,
     income: 0,
   });
+  const [reportCategories, setReportCategories] = useState<ReportCategory[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const { width } = useWindowDimensions();
   const isWide = width >= 760;
@@ -76,10 +79,11 @@ export default function DashboardScreen() {
 
     let active = true;
 
-    Promise.all([getMonthlySummary(), listRecentTransactions(5)])
-      .then(([nextSummary, nextTransactions]) => {
+    Promise.all([getMonthlyReport(), listRecentTransactions(5)])
+      .then(([monthlyReport, nextTransactions]) => {
         if (!active) return;
-        setSummary(nextSummary);
+        setSummary(monthlyReport.summary);
+        setReportCategories(monthlyReport.categories);
         setTransactions(nextTransactions);
       })
       .catch((error) => {
@@ -143,6 +147,66 @@ export default function DashboardScreen() {
       </SafeAreaView>
     );
   }
+
+  const budgetedCategories = reportCategories.filter((category) => category.budget > 0);
+  const totalBudget = budgetedCategories.reduce((total, category) => total + category.budget, 0);
+  const budgetSpending = budgetedCategories.reduce((total, category) => total + category.spent, 0);
+  const remainingBudget = Math.max(totalBudget - budgetSpending, 0);
+  const savingRate = summary.income > 0 ? (summary.balance / summary.income) * 100 : 0;
+  const budgetUsage = totalBudget > 0 ? (budgetSpending / totalBudget) * 100 : 0;
+  const topCategory = reportCategories.find((category) => category.spent > 0);
+  const hasFinancialData = summary.income > 0 || summary.expense > 0;
+  const highlights = [
+    {
+      color: summary.balance >= 0 ? colors.primary : colors.coral,
+      icon: WalletCards,
+      label: 'Saldo bersih',
+      value: formatCurrency(summary.balance),
+    },
+    {
+      color: colors.amber,
+      icon: Target,
+      label: 'Anggaran pengeluaran',
+      value: totalBudget > 0 ? formatCurrency(totalBudget) : 'Belum diatur',
+    },
+    {
+      color: remainingBudget > 0 ? colors.primary : colors.coral,
+      icon: PiggyBank,
+      label: 'Sisa anggaran',
+      value: totalBudget > 0 ? formatCurrency(remainingBudget) : '-',
+    },
+    {
+      color: '#5377A6',
+      icon: ChartNoAxesCombined,
+      label: 'Rasio tabungan',
+      value: summary.income > 0 ? `${Math.round(savingRate)}%` : '-',
+    },
+  ];
+  const insight = !hasFinancialData
+    ? {
+        danger: false,
+        text: 'Mulai mencatat pemasukan dan pengeluaran untuk melihat pola bulan ini.',
+        title: 'Ringkasan keuangan menunggumu',
+      }
+    : summary.balance < 0
+      ? {
+          danger: true,
+          text: `Pengeluaran melebihi pemasukan sebesar ${formatCurrency(Math.abs(summary.balance))}.`,
+          title: 'Arus kas bulan ini defisit',
+        }
+      : budgetUsage > 100
+        ? {
+            danger: true,
+            text: `Pemakaian anggaran sudah ${Math.round(budgetUsage)}%. Periksa kategori pengeluaranmu.`,
+            title: 'Anggaran melewati batas',
+          }
+        : {
+            danger: false,
+            text: topCategory
+              ? `Rasio tabungan ${Math.round(savingRate)}%. Pengeluaran terbesar: ${topCategory.name} (${formatCurrency(topCategory.spent)}).`
+              : `Rasio tabungan bulan ini ${Math.round(savingRate)}%.`,
+            title: 'Keuangan bulan ini terkendali',
+          };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -229,6 +293,30 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Ringkasan keuangan</Text>
+              <Text style={styles.sectionMeta}>
+                {totalBudget > 0 ? `${Math.round(budgetUsage)}% anggaran terpakai` : currentPeriod}
+              </Text>
+            </View>
+            <View style={styles.summaryGrid}>
+              {highlights.map(({ color, icon: Icon, label, value }) => (
+                <View
+                  key={label}
+                  style={[styles.summaryItem, { flexBasis: isWide ? '23%' : '47%' }]}>
+                  <View style={[styles.summaryIcon, { backgroundColor: `${color}18` }]}>
+                    <Icon color={color} size={20} />
+                  </View>
+                  <Text style={styles.summaryLabel}>{label}</Text>
+                  <Text adjustsFontSizeToFit numberOfLines={1} style={styles.summaryValue}>
+                    {value}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -326,11 +414,11 @@ export default function DashboardScreen() {
             )}
           </View>
 
-          <View style={styles.insightBand}>
-            <ChartNoAxesCombined color={colors.amber} size={24} />
+          <View style={[styles.insightBand, insight.danger && styles.insightBandDanger]}>
+            <ChartNoAxesCombined color={insight.danger ? colors.coral : colors.amber} size={24} />
             <View style={styles.insightCopy}>
-              <Text style={styles.insightTitle}>Ringkasan keuangan menunggumu</Text>
-              <Text style={styles.insightText}>Mulai mencatat untuk melihat pola bulanan.</Text>
+              <Text style={styles.insightTitle}>{insight.title}</Text>
+              <Text style={styles.insightText}>{insight.text}</Text>
             </View>
           </View>
           </View>
@@ -530,6 +618,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  summaryItem: {
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    flexGrow: 1,
+    minHeight: 118,
+    padding: 14,
+  },
+  summaryIcon: {
+    alignItems: 'center',
+    borderRadius: layout.radius,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  summaryLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 10,
+  },
+  summaryValue: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 4,
+    maxWidth: '100%',
+  },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -657,6 +778,9 @@ const styles = StyleSheet.create({
     gap: 13,
     marginTop: 26,
     padding: 16,
+  },
+  insightBandDanger: {
+    backgroundColor: colors.coralSoft,
   },
   insightCopy: {
     flex: 1,

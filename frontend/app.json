@@ -8,7 +8,7 @@
     "scheme": "duittrack",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.gilbranalfarizi.duittrack"
     },
     "android": {
@@ -32,8 +32,7 @@
         {
           "backgroundColor": "#075C51"
         }
-      ],
-      "expo-sharing"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
