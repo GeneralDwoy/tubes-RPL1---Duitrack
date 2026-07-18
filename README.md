@@ -1,66 +1,69 @@
 # DuiTrack
 
-DuiTrack adalah aplikasi pencatatan keuangan pribadi yang dirancang untuk berjalan di perangkat mobile dan web.
+DuiTrack adalah aplikasi pencatatan keuangan pribadi untuk mobile dan web.
 
 ## Teknologi
 
-- Expo dan React Native dengan TypeScript
-- Expo Router untuk navigasi
-- Supabase untuk autentikasi dan database PostgreSQL
-- GitHub untuk penyimpanan dan kolaborasi kode
+- Expo, React Native, dan TypeScript untuk aplikasi mobile serta web
+- Expo Router untuk navigasi berbasis file
+- Node.js dan Express untuk REST API
+- MySQL untuk penyimpanan data
+- JWT dan bcrypt untuk sesi serta keamanan kata sandi
 
 ## Fitur Utama
 
-- Registrasi, login, dan profil pengguna
-- Pencatatan pemasukan dan pengeluaran
-- Pengelolaan kategori dan anggaran
-- Riwayat dan pencarian transaksi
-- Laporan serta evaluasi kondisi keuangan
+- Registrasi, login, profil, dan perubahan kata sandi
+- CRUD kategori serta anggaran bulanan
+- CRUD pemasukan dan pengeluaran
+- Validasi saldo dan batas anggaran
+- Riwayat, pencarian, dan filter transaksi
+- Dashboard, laporan bulanan, serta notifikasi anggaran
 - Ekspor laporan PDF dan Excel
-- Notifikasi pemakaian anggaran
-- Pengaturan profil dan kata sandi
 
 ## Struktur Repository
 
 - `frontend/` - aplikasi Expo untuk Android, iOS, dan web
-- Dokumen analisis dan folder ekstraksi tetap disimpan secara lokal dan diabaikan oleh Git
+- `backend/` - REST API Express yang terhubung ke MySQL
+- `docs/` - panduan konfigurasi dan demo
+- `supabase/` - arsip skema lama; tidak dipakai oleh aplikasi MySQL saat ini
 
-## Status Pengembangan
+Panduan lengkap MySQL dan urutan demo tersedia di `docs/MYSQL_SETUP.md`. Skema enam tabel yang digunakan aplikasi tersedia di `backend/sql/schema.sql`.
 
-MVP DuiTrack sudah mencakup seluruh kebutuhan fungsional utama: autentikasi, kategori dan anggaran, transaksi pemasukan/pengeluaran, validasi saldo, pencarian dan filter riwayat, laporan bulanan, evaluasi anggaran, serta ekspor Excel (`.xlsx`) dan PDF. Semua halaman data dilindungi oleh sesi Supabase dan Row Level Security.
+## Menjalankan Demo
 
-Skema database tersedia di `supabase/schema.sql`, sedangkan langkah pembuatan project dan pemasangan key dijelaskan di `docs/SUPABASE_SETUP.md`.
+Nyalakan MySQL terlebih dahulu. Buka dua terminal dari folder proyek.
 
-## Menjalankan Aplikasi
+Terminal pertama:
 
-Masuk ke folder `frontend`, pasang dependensi, lalu jalankan:
-
-```bash
-npm install
-npm start
+```powershell
+cd backend
+npm.cmd run dev
 ```
 
-Gunakan tombol `a` untuk Android, `w` untuk web, atau pindai kode QR melalui Expo Go.
+Terminal kedua untuk web:
 
-Untuk demo pada HP fisik, pastikan HP dan laptop berada pada jaringan yang sama lalu jalankan:
-
-```bash
-npm run mobile
+```powershell
+cd frontend
+npm.cmd run web
 ```
 
-Jika QR tidak terbaca, buka Expo Go dan masukkan URL `exp://IP-LAPTOP:8081`. Alamat IP laptop dapat dilihat dengan perintah `ipconfig`. Mode tunnel tersedia melalui `npm run mobile:tunnel`, tetapi bergantung pada layanan ngrok dan dapat mengalami timeout.
+Untuk HP yang satu Wi-Fi dengan laptop:
 
-Untuk menjalankan web secara langsung:
-
-```bash
-npm run web
+```powershell
+cd frontend
+npm.cmd run mobile
 ```
 
-## Pemeriksaan Project
+Backend harus tetap berjalan selama aplikasi digunakan. Expo Go akan memakai alamat IP laptop dari koneksi LAN. Jika diperlukan, isi `frontend/.env` dengan `EXPO_PUBLIC_API_URL=http://IP-LAPTOP:3000`.
 
-```bash
-npx tsc --noEmit
-npm run lint
-npx expo-doctor
-npx expo export --platform web
+## Pemeriksaan
+
+```powershell
+cd backend
+npm.cmd run check
+npm.cmd test
+
+cd ..\frontend
+npx.cmd tsc --noEmit
+npm.cmd run lint
 ```

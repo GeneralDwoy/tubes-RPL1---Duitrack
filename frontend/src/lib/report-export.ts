@@ -221,7 +221,8 @@ async function downloadPdfOnWeb(
       align: 'right',
     });
   }
-  document.save(fileName);
+  const pdfBuffer = document.output('arraybuffer');
+  downloadOnWeb(new Uint8Array(pdfBuffer), fileName, 'application/pdf');
 }
 
 async function createExcelFile(report: MonthlyReport, transactions: FinanceTransaction[]) {

@@ -15,8 +15,8 @@ import { useAuth } from '@/providers/auth-provider';
 
 const registerSchema = z
   .object({
-    name: z.string().trim().min(1, 'Nama wajib diisi').min(3, 'Nama minimal 3 karakter'),
-    email: z.string().trim().min(1, 'Email wajib diisi').email('Format email belum benar'),
+    name: z.string().trim().min(1, 'Nama wajib diisi').min(3, 'Nama minimal 3 karakter').max(50, 'Nama maksimal 50 karakter'),
+    email: z.string().trim().min(1, 'Email wajib diisi').email('Format email belum benar').max(30, 'Email maksimal 30 karakter'),
     password: z.string().min(8, 'Gunakan minimal 8 karakter'),
     confirmPassword: z.string().min(1, 'Konfirmasi kata sandi wajib diisi'),
   })

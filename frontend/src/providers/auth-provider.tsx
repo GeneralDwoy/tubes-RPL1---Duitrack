@@ -1,9 +1,25 @@
-import type { Session } from '@supabase/supabase-js';
-import * as Linking from 'expo-linking';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { requireSupabaseConfig, supabase } from '@/lib/supabase';
+import { apiRequest, getApiToken, setApiToken } from '@/lib/api';
+
+const SESSION_KEY = 'duitrack.auth.session';
+
+type ApiUser = {
+  email: string;
+  fotoProfil: string | null;
+  idUser: number;
+  nama: string;
+};
+
+export type AuthSession = {
+  user: {
+    email: string;
+    id: string;
+    user_metadata: { full_name: string };
+  };
+};
 
 type SignUpInput = {
   email: string;
@@ -13,84 +29,128 @@ type SignUpInput = {
 
 type AuthContextValue = {
   loading: boolean;
+  refreshSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  session: Session | null;
+  session: AuthSession | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (input: SignUpInput) => Promise<{ sessionCreated: boolean }>;
   updatePassword: (password: string) => Promise<void>;
 };
 
+type AuthResponse = { token: string; user: ApiUser };
+type MeResponse = { user: ApiUser };
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function createSession(user: ApiUser): AuthSession {
+  return {
+    user: {
+      email: user.email,
+      id: String(user.idUser),
+      user_metadata: { full_name: user.nama },
+    },
+  };
+}
+
+async function persistSession(token: string | null, session: AuthSession | null) {
+  await setApiToken(token);
+  if (session) {
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } else {
+    await AsyncStorage.removeItem(SESSION_KEY);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return;
-      if (error) console.warn('Unable to restore Supabase session:', error.message);
-      setSession(data.session);
-      setLoading(false);
-    });
+    const restoreSession = async () => {
+      try {
+        const [token, storedSession] = await Promise.all([
+          getApiToken(),
+          AsyncStorage.getItem(SESSION_KEY),
+        ]);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (active) setSession(nextSession);
-    });
+        if (!token || !storedSession) return;
+        const data = await apiRequest<MeResponse>('/auth/me');
+        const nextSession = createSession(data.user);
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+        if (active) setSession(nextSession);
+      } catch {
+        await persistSession(null, null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
 
+    void restoreSession();
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    requireSupabaseConfig();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const data = await apiRequest<AuthResponse>('/auth/login', {
+      auth: false,
+      body: { email, password },
+      method: 'POST',
+    });
+    const nextSession = createSession(data.user);
+    await persistSession(data.token, nextSession);
+    setSession(nextSession);
   }, []);
 
   const signUp = useCallback(async ({ email, name, password }: SignUpInput) => {
-    requireSupabaseConfig();
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: Linking.createURL('/login'),
-      },
+    const data = await apiRequest<AuthResponse>('/auth/register', {
+      auth: false,
+      body: { email, nama: name, password },
+      method: 'POST',
     });
-    if (error) throw error;
-    return { sessionCreated: Boolean(data.session) };
+    const nextSession = createSession(data.user);
+    await persistSession(data.token, nextSession);
+    setSession(nextSession);
+    return { sessionCreated: true };
   }, []);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    await persistSession(null, null);
+    setSession(null);
   }, []);
 
-  const resetPassword = useCallback(async (email: string) => {
-    requireSupabaseConfig();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: Linking.createURL('/update-password'),
-    });
-    if (error) throw error;
+  const refreshSession = useCallback(async () => {
+    const data = await apiRequest<MeResponse>('/auth/me');
+    const nextSession = createSession(data.user);
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+    setSession(nextSession);
+  }, []);
+
+  const resetPassword = useCallback(async (_email: string) => {
+    throw new Error(
+      'Pemulihan otomatis melalui email belum dikonfigurasi. Hubungi administrator DuiTrack untuk mereset akun.',
+    );
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
-    requireSupabaseConfig();
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
+    await apiRequest('/auth/password', { body: { password }, method: 'PUT' });
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ loading, resetPassword, session, signIn, signOut, signUp, updatePassword }),
-    [loading, resetPassword, session, signIn, signOut, signUp, updatePassword],
+    () => ({
+      loading,
+      refreshSession,
+      resetPassword,
+      session,
+      signIn,
+      signOut,
+      signUp,
+      updatePassword,
+    }),
+    [loading, refreshSession, resetPassword, session, signIn, signOut, signUp, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

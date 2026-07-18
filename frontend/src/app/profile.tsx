@@ -25,7 +25,7 @@ import { useAuth } from '@/providers/auth-provider';
 
 const profileSchema = z.object({
   email: z.string(),
-  name: z.string().trim().min(3, 'Nama minimal 3 karakter'),
+  name: z.string().trim().min(3, 'Nama minimal 3 karakter').max(50, 'Nama maksimal 50 karakter'),
 });
 
 const passwordSchema = z
@@ -43,7 +43,7 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { loading: authLoading, session, signOut } = useAuth();
+  const { loading: authLoading, refreshSession, session, signOut } = useAuth();
   const [profileLoading, setProfileLoading] = useState(true);
   const {
     control: profileControl,
@@ -79,6 +79,7 @@ export default function ProfileScreen() {
   const saveProfile = async (values: ProfileValues) => {
     try {
       await updateUserProfile(values.name);
+      await refreshSession();
       Alert.alert('Profil tersimpan', 'Nama akun DuiTrack berhasil diperbarui.');
     } catch (error) {
       Alert.alert('Profil gagal disimpan', getAuthErrorMessage(error));

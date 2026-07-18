@@ -1,7 +1,7 @@
 export function getAuthErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
 
-  if (message.includes('invalid login credentials')) {
+  if (message.includes('invalid login credentials') || message.includes('tidak sesuai')) {
     return 'Email atau kata sandi tidak cocok.';
   }
 
@@ -9,7 +9,7 @@ export function getAuthErrorMessage(error: unknown) {
     return 'Email belum dikonfirmasi. Periksa kotak masuk emailmu.';
   }
 
-  if (message.includes('user already registered')) {
+  if (message.includes('user already registered') || message.includes('sudah terdaftar')) {
     return 'Email tersebut sudah terdaftar. Silakan masuk.';
   }
 
@@ -25,9 +25,11 @@ export function getAuthErrorMessage(error: unknown) {
     return 'Tautan pemulihan tidak valid atau sudah kedaluwarsa.';
   }
 
-  if (message.includes('network') || message.includes('fetch')) {
-    return 'Koneksi ke server gagal. Periksa internet lalu coba kembali.';
+  if (message.includes('network') || message.includes('fetch') || message.includes('tidak dapat terhubung')) {
+    return error instanceof Error ? error.message : 'Koneksi ke server gagal. Coba kembali.';
   }
 
-  return 'Terjadi kesalahan. Silakan coba kembali.';
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Terjadi kesalahan. Silakan coba kembali.';
 }
