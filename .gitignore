@@ -3,6 +3,8 @@ node_modules/
 .expo/
 dist/
 web-build/
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Local configuration and secrets
 .env
@@ -20,4 +22,3 @@ _docx_req/
 
 # Local project documentation (may contain personal information)
 *.docx
-

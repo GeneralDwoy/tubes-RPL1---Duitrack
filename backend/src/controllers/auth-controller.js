@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
+const fs = require('node:fs/promises');
 const jwt = require('jsonwebtoken');
+const path = require('node:path');
 
 const pool = require('../config/database');
 
@@ -35,6 +37,17 @@ function publicUser(user) {
 
 function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+async function removeStoredPhoto(photoPath) {
+  if (!photoPath?.startsWith('/uploads/profile-')) return;
+
+  const filePath = path.join(__dirname, '..', '..', 'uploads', path.basename(photoPath));
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
 }
 
 async function register(req, res) {
@@ -191,6 +204,83 @@ async function updateProfile(req, res) {
   }
 }
 
+async function updateProfilePhoto(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ status: 'error', message: 'Pilih foto yang akan diunggah' });
+  }
+
+  const newPhotoPath = `/uploads/${req.file.filename}`;
+
+  try {
+    const [users] = await pool.execute(
+      'SELECT id_user, nama, email, foto_profil FROM `user` WHERE id_user = ? LIMIT 1',
+      [req.user.idUser],
+    );
+
+    if (users.length === 0) {
+      await removeStoredPhoto(newPhotoPath);
+      return res.status(404).json({ status: 'error', message: 'Pengguna tidak ditemukan' });
+    }
+
+    const oldPhotoPath = users[0].foto_profil;
+    await pool.execute(
+      'UPDATE `user` SET foto_profil = ? WHERE id_user = ?',
+      [newPhotoPath, req.user.idUser],
+    );
+    try {
+      await removeStoredPhoto(oldPhotoPath);
+    } catch (removeError) {
+      console.error('Menghapus foto profil lama gagal:', removeError.message);
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Foto profil berhasil diperbarui',
+      data: {
+        user: publicUser({ ...users[0], foto_profil: newPhotoPath }),
+      },
+    });
+  } catch (error) {
+    await removeStoredPhoto(newPhotoPath).catch(() => undefined);
+    console.error('Memperbarui foto profil gagal:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server' });
+  }
+}
+
+async function deleteProfilePhoto(req, res) {
+  try {
+    const [users] = await pool.execute(
+      'SELECT id_user, nama, email, foto_profil FROM `user` WHERE id_user = ? LIMIT 1',
+      [req.user.idUser],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Pengguna tidak ditemukan' });
+    }
+
+    await pool.execute(
+      'UPDATE `user` SET foto_profil = NULL WHERE id_user = ?',
+      [req.user.idUser],
+    );
+    try {
+      await removeStoredPhoto(users[0].foto_profil);
+    } catch (removeError) {
+      console.error('Menghapus berkas foto profil gagal:', removeError.message);
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Foto profil berhasil dihapus',
+      data: {
+        user: publicUser({ ...users[0], foto_profil: null }),
+      },
+    });
+  } catch (error) {
+    console.error('Menghapus foto profil gagal:', error.message);
+    return res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server' });
+  }
+}
+
 async function updatePassword(req, res) {
   try {
     const password = req.body.password;
@@ -217,9 +307,11 @@ async function updatePassword(req, res) {
 }
 
 module.exports = {
+  deleteProfilePhoto,
   login,
   me,
   register,
   updatePassword,
   updateProfile,
+  updateProfilePhoto,
 };

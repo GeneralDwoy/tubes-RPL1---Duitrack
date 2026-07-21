@@ -28,6 +28,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "microphonePermission": false,
+          "photosPermission": "Izinkan DuiTrack mengakses foto untuk memilih foto profil."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#075C51"

@@ -183,7 +183,7 @@ export default function CategoriesScreen() {
             </Pressable>
           }
           subtitle="Atur kelompok transaksi dan batas bulanan"
-          title="Kategori & anggaran"
+          title="Kelola Kategori & Anggaran"
         />
 
         <View style={styles.segmented}>

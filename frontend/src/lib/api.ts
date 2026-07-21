@@ -16,6 +16,12 @@ function resolveApiBaseUrl() {
 
 export const apiBaseUrl = resolveApiBaseUrl();
 
+export function resolveApiAssetUrl(value: string | null) {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${apiBaseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
+}
+
 export class ApiError extends Error {
   code?: string;
   data?: Record<string, unknown>;
@@ -75,6 +81,40 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}) {
     const response = await fetch(`${apiBaseUrl}/api${path}`, {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers,
+      method,
+    });
+    const text = await response.text();
+    const payload = text ? (JSON.parse(text) as ApiEnvelope<T>) : ({ status: 'success' } as ApiEnvelope<T>);
+
+    if (!response.ok) {
+      throw new ApiError(
+        payload.message || 'Permintaan ke server gagal.',
+        response.status,
+        payload.code,
+        payload.data as Record<string, unknown> | undefined,
+      );
+    }
+
+    return payload.data as T;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      `Tidak dapat terhubung ke backend DuiTrack di ${apiBaseUrl}. Pastikan backend sudah dinyalakan.`,
+    );
+  }
+}
+
+export async function apiFormRequest<T>(path: string, body: FormData, method: 'POST' | 'PUT') {
+  const token = await getApiToken();
+  if (!token) throw new ApiError('Sesi pengguna tidak ditemukan. Silakan masuk kembali.', 401);
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/api${path}`, {
+      body,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       method,
     });
     const text = await response.text();

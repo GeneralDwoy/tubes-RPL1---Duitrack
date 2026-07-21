@@ -43,7 +43,7 @@ import { useAuth } from '@/providers/auth-provider';
 const quickActions = [
   { color: colors.primary, icon: ArrowDownLeft, label: 'Pemasukan' },
   { color: colors.coral, icon: ArrowUpRight, label: 'Pengeluaran' },
-  { color: colors.amber, icon: Target, label: 'Anggaran' },
+  { color: colors.amber, icon: Target, label: 'Kelola Kategori & Anggaran' },
   { color: '#5377A6', icon: FileChartColumn, label: 'Laporan' },
 ];
 
@@ -113,7 +113,7 @@ export default function DashboardScreen() {
       return;
     }
 
-    if (label === 'Anggaran') {
+    if (label === 'Kelola Kategori & Anggaran') {
       router.push('/categories');
       return;
     }

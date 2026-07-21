@@ -17,7 +17,7 @@ export type AuthSession = {
   user: {
     email: string;
     id: string;
-    user_metadata: { full_name: string };
+    user_metadata: { avatar_url: string | null; full_name: string };
   };
 };
 
@@ -48,7 +48,7 @@ function createSession(user: ApiUser): AuthSession {
     user: {
       email: user.email,
       id: String(user.idUser),
-      user_metadata: { full_name: user.nama },
+      user_metadata: { avatar_url: user.fotoProfil, full_name: user.nama },
     },
   };
 }

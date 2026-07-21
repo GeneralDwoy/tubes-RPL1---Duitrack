@@ -73,14 +73,6 @@ export function AuthLayout({
                       </View>
                     ))}
                   </View>
-                  <View style={styles.balancePreview}>
-                    <Text style={styles.balanceLabel}>Ringkasan bulan ini</Text>
-                    <Text style={styles.balanceValue}>Rp0</Text>
-                    <View style={styles.balanceMeta}>
-                      <Text style={styles.balanceMetaText}>Siap untuk catatan pertamamu</Text>
-                      <View style={styles.balanceAccent} />
-                    </View>
-                  </View>
                 </>
               ) : null}
             </View>
@@ -151,7 +143,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   brandPanelWide: {
-    justifyContent: 'space-between',
     padding: 42,
     width: '46%',
   },
@@ -194,39 +185,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-  },
-  balancePreview: {
-    backgroundColor: colors.white,
-    borderRadius: layout.radius,
-    gap: 8,
-    marginTop: 34,
-    padding: 20,
-  },
-  balanceLabel: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  balanceValue: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  balanceMeta: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  balanceMetaText: {
-    color: colors.muted,
-    flex: 1,
-    fontSize: 12,
-  },
-  balanceAccent: {
-    backgroundColor: colors.amber,
-    borderRadius: 4,
-    height: 8,
-    width: 30,
   },
   formPane: {
     alignItems: 'center',

@@ -8,7 +8,8 @@ async function main() {
   await new Promise((resolve) => server.once('listening', resolve));
 
   const address = server.address();
-  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const origin = `http://127.0.0.1:${address.port}`;
+  const baseUrl = `${origin}/api`;
   const email = `s${String(Date.now()).slice(-8)}@d.local`;
   const firstPassword = 'KataSandiUji123!';
   const secondPassword = 'KataSandiBaru456!';
@@ -26,6 +27,20 @@ async function main() {
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(`${options.method || 'GET'} ${path}: ${payload.message}`);
+    return payload.data;
+  }
+
+  async function requestForm(path, formData, method = 'PUT') {
+    const response = await fetch(`${baseUrl}${path}`, {
+      body: formData,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      method,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(`${method} ${path}: ${payload.message}`);
     return payload.data;
   }
 
@@ -114,6 +129,20 @@ async function main() {
       body: { nama: 'Pengguna Smoke Selesai' },
     });
     assert.equal(profile.user.nama, 'Pengguna Smoke Selesai');
+
+    const photoForm = new FormData();
+    photoForm.append(
+      'photo',
+      new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: 'image/png' }),
+      'profil.png',
+    );
+    const uploadedPhoto = await requestForm('/auth/photo', photoForm);
+    assert.match(uploadedPhoto.user.fotoProfil, /^\/uploads\/profile-/);
+    const photoResponse = await fetch(`${origin}${uploadedPhoto.user.fotoProfil}`);
+    assert.equal(photoResponse.status, 200);
+    const removedPhoto = await request('/auth/photo', { method: 'DELETE' });
+    assert.equal(removedPhoto.user.fotoProfil, null);
+
     await request('/auth/password', { method: 'PUT', body: { password: secondPassword } });
 
     await request(`/transactions/expense/${expense.idPengeluaran}`, { method: 'DELETE' });
@@ -126,7 +155,7 @@ async function main() {
     });
     assert.ok(login.token);
 
-    console.log('Smoke test DuiTrack berhasil: 14 alur API lolos.');
+    console.log('Smoke test DuiTrack berhasil: 17 alur API lolos.');
   } finally {
     await pool.execute('DELETE FROM `user` WHERE email = ?', [email]);
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));

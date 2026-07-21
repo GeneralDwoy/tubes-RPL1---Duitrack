@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const cors = require('cors');
 const express = require('express');
+const path = require('node:path');
 
 const pool = require('./config/database');
 const authRoutes = require('./routes/auth-routes');
@@ -13,6 +14,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.get('/api/health', async (req, res) => {
   try {
