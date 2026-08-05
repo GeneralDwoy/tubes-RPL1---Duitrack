@@ -18,8 +18,22 @@ const transactionRoutes = require('./routes/transaction-routes');
 
 const app = express();
 
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 app.disable('x-powered-by');
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // izinkan request tanpa origin (misalnya curl, Postman, atau server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} tidak diizinkan`));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: '100kb' }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
