@@ -1,8 +1,9 @@
-const assert = require('node:assert/strict');
+import assert from 'node:assert/strict';
+import ExcelJS from 'exceljs';
+import { jsPDF } from 'jspdf';
+import autoTableModule from 'jspdf-autotable';
 
-const ExcelJS = require('exceljs');
-const { jsPDF } = require('jspdf');
-const autoTable = require('jspdf-autotable').default;
+const autoTable = autoTableModule.default ?? autoTableModule;
 
 async function main() {
   const pdf = new jsPDF({ format: 'a4', orientation: 'landscape', unit: 'mm' });
