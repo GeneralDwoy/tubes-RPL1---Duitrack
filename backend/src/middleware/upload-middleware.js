@@ -24,7 +24,6 @@ const upload = multer({
       callback(new Error('Foto harus menggunakan format JPG, PNG, atau WebP'));
       return;
     }
-
     callback(null, true);
   },
   limits: { fileSize: 2 * 1024 * 1024, files: 1 },

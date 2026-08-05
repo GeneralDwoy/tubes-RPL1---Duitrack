@@ -11,11 +11,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Proxy hanya aktif saat development (npm run dev)
+    // Di production, VITE_API_URL digunakan langsung oleh api.js
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
   },
 });

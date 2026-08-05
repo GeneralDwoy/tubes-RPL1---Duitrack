@@ -8,6 +8,7 @@ function resolveApiBaseUrl() {
 
 export const apiBaseUrl = resolveApiBaseUrl();
 
+
 export function resolveApiAssetUrl(value) {
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;

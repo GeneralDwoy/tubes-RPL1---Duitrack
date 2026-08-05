@@ -1,8 +1,10 @@
-# Dependencies and Expo output
+# Dependencies
 node_modules/
-.expo/
+
+# Build output
 dist/
-web-build/
+
+# Uploads (user files - use Cloudinary in production)
 backend/uploads/*
 !backend/uploads/.gitkeep
 
