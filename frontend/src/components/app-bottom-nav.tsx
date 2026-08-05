@@ -2,7 +2,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { ChartNoAxesCombined, House, ReceiptText, UserRound } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, layout } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 
 const items = [
   { href: '/dashboard' as const, icon: House, label: 'Beranda' },
@@ -16,7 +16,7 @@ export function AppBottomNav() {
   const pathname = usePathname();
 
   return (
-    <View style={styles.shell}>
+    <View style={styles.shell} pointerEvents="box-none">
       <View accessibilityRole="tablist" style={styles.nav}>
         {items.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
@@ -31,7 +31,7 @@ export function AppBottomNav() {
                 active && styles.itemActive,
                 pressed && styles.pressed,
               ]}>
-              <Icon color={active ? colors.primaryDark : colors.muted} size={19} />
+              <Icon color={active ? colors.white : '#94A3B8'} size={18} />
               <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
             </Pressable>
           );
@@ -43,30 +43,53 @@ export function AppBottomNav() {
 
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.line,
-    borderTopWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    alignItems: 'center',
+    bottom: 16,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 100,
   },
   nav: {
-    alignSelf: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F523E',
+    borderRadius: 32,
+    elevation: 10,
     flexDirection: 'row',
-    gap: 4,
-    maxWidth: 720,
-    width: '100%',
+    gap: 6,
+    justifyContent: 'space-between',
+    maxWidth: 440,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    shadowColor: '#073527',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    width: '90%',
   },
   item: {
     alignItems: 'center',
-    borderRadius: layout.radius,
+    borderRadius: 24,
     flex: 1,
-    gap: 3,
+    flexDirection: 'row',
+    gap: 6,
+    height: 42,
     justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
   },
-  itemActive: { backgroundColor: colors.primarySoft },
-  label: { color: colors.muted, fontSize: 10, fontWeight: '700' },
-  labelActive: { color: colors.primaryDark },
-  pressed: { opacity: 0.7 },
+  itemActive: {
+    backgroundColor: '#22C55E',
+  },
+  label: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  labelActive: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+  pressed: {
+    opacity: 0.8,
+  },
 });

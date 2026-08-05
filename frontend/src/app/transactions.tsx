@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -128,35 +129,50 @@ export default function TransactionsScreen() {
   };
 
   const confirmDelete = (transaction: FinanceTransaction) => {
-    Alert.alert(
-      'Hapus transaksi?',
-      `${transaction.title} senilai ${formatCurrency(transaction.amount)} akan dihapus.`,
-      [
-        { style: 'cancel', text: 'Batal' },
-        {
-          onPress: async () => {
-            setDeletingId(transaction.id);
-            try {
-              await deleteTransaction(transaction.type, transaction.id);
-              setTransactions((current) =>
-                current.filter(
-                  (item) => item.id !== transaction.id || item.type !== transaction.type,
-                ),
-              );
-            } catch (error) {
-              Alert.alert(
-                'Transaksi tidak dapat dihapus',
-                error instanceof Error ? error.message : 'Silakan coba kembali.',
-              );
-            } finally {
-              setDeletingId(null);
-            }
+    const doDelete = async () => {
+      setDeletingId(transaction.id);
+      try {
+        await deleteTransaction(transaction.type, transaction.id);
+        setTransactions((current) =>
+          current.filter(
+            (item) => !(item.id === transaction.id && item.type === transaction.type),
+          ),
+        );
+      } catch (error) {
+        if (Platform.OS === 'web') {
+          window.alert(error instanceof Error ? error.message : 'Silakan coba kembali.');
+        } else {
+          Alert.alert(
+            'Transaksi tidak dapat dihapus',
+            error instanceof Error ? error.message : 'Silakan coba kembali.',
+          );
+        }
+      } finally {
+        setDeletingId(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Hapus transaksi?\n${transaction.title} senilai ${formatCurrency(transaction.amount)} akan dihapus.`,
+      );
+      if (confirmed) {
+        void doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Hapus transaksi?',
+        `${transaction.title} senilai ${formatCurrency(transaction.amount)} akan dihapus.`,
+        [
+          { style: 'cancel', text: 'Batal' },
+          {
+            onPress: doDelete,
+            style: 'destructive',
+            text: 'Hapus',
           },
-          style: 'destructive',
-          text: 'Hapus',
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   return (
@@ -432,7 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   resultCount: { color: colors.muted, fontSize: 11 },
-  list: { gap: 9, paddingBottom: 40, paddingTop: 16 },
+  list: { gap: 9, paddingBottom: 120, paddingTop: 16 },
   loader: { marginTop: 40 },
   transactionRow: {
     alignItems: 'center',

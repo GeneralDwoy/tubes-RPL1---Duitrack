@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  scrollContent: { paddingBottom: 44 },
+  scrollContent: { paddingBottom: 120 },
   page: {
     alignSelf: 'center',
     maxWidth: layout.pageMaxWidth,

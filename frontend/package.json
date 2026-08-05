@@ -47,14 +47,9 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "mobile": "expo start --go --lan",
-    "mobile:tunnel": "expo start --go --tunnel",
-    "test:exports": "node scripts/test-report-export.js",
+    "start": "expo start --web",
     "web": "expo start --web",
+    "test:exports": "node scripts/test-report-export.js",
     "lint": "expo lint"
   },
   "private": true

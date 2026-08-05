@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   page: {
     alignSelf: 'center',
     maxWidth: 760,
-    paddingBottom: 46,
+    paddingBottom: 120,
     paddingHorizontal: 20,
     width: '100%',
   },

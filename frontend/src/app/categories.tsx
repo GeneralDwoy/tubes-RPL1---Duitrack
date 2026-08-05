@@ -137,25 +137,40 @@ export default function CategoriesScreen() {
   };
 
   const confirmDelete = (category: Category) => {
-    Alert.alert(
-      'Hapus kategori?',
-      `Kategori ${category.nama_kategori} akan dihapus.`,
-      [
-        { style: 'cancel', text: 'Batal' },
-        {
-          onPress: async () => {
-            try {
-              await deleteCategory(category.id_kategori);
-              await loadCategories();
-            } catch (error) {
-              Alert.alert('Kategori tidak dapat dihapus', getCategoryError(error));
-            }
+    const doDelete = async () => {
+      try {
+        await deleteCategory(category.id_kategori);
+        await loadCategories();
+      } catch (error) {
+        if (Platform.OS === 'web') {
+          window.alert(getCategoryError(error));
+        } else {
+          Alert.alert('Kategori tidak dapat dihapus', getCategoryError(error));
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Hapus kategori?\nKategori ${category.nama_kategori} akan dihapus.`,
+      );
+      if (confirmed) {
+        void doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Hapus kategori?',
+        `Kategori ${category.nama_kategori} akan dihapus.`,
+        [
+          { style: 'cancel', text: 'Batal' },
+          {
+            onPress: doDelete,
+            style: 'destructive',
+            text: 'Hapus',
           },
-          style: 'destructive',
-          text: 'Hapus',
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   if (authLoading || !session) {
@@ -404,7 +419,7 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.surface },
   segmentText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   segmentTextActive: { color: colors.primaryDark },
-  list: { gap: 10, paddingBottom: 36, paddingTop: 18 },
+  list: { gap: 10, paddingBottom: 120, paddingTop: 18 },
   listLoader: { marginTop: 40 },
   categoryRow: {
     alignItems: 'center',

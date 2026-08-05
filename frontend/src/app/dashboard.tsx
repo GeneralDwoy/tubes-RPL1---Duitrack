@@ -222,6 +222,7 @@ export default function DashboardScreen() {
                 onPress={() => router.push('/notifications')}
                 style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                 <Bell color={colors.ink} size={20} />
+                <View style={styles.badgeDot} />
               </Pressable>
               <Pressable
                 accessibilityLabel="Profil dan pengaturan"
@@ -254,44 +255,31 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
 
-          <View style={[styles.balancePanel, isWide && styles.balancePanelWide]}>
+          <View style={styles.balancePanel}>
             <View style={styles.balanceMain}>
-              <View style={styles.balanceLabelRow}>
-                <WalletCards color="#B9D8D1" size={20} />
-                <Text style={styles.balanceLabel}>Saldo saat ini</Text>
-              </View>
+              <Text style={styles.balanceLabel}>Total Saldo</Text>
               <Text numberOfLines={1} adjustsFontSizeToFit style={styles.balanceValue}>
                 {formatCurrency(summary.balance)}
               </Text>
               <Text style={styles.balanceHint}>
                 {summary.income || summary.expense
-                  ? 'Ringkasan transaksi pada periode ini'
+                  ? 'Ringkasan posisi keuangan'
                   : 'Belum ada transaksi pada periode ini'}
               </Text>
             </View>
-            <View style={[styles.balanceStats, isWide && styles.balanceStatsWide]}>
-              <View style={styles.statItem}>
-                <View style={[styles.statIcon, styles.incomeIcon]}>
-                  <ArrowDownLeft color={colors.primaryDark} size={18} />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>Pemasukan</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
-                    {formatCurrency(summary.income)}
-                  </Text>
-                </View>
+
+            <View style={styles.balanceSubCards}>
+              <View style={styles.subCardItem}>
+                <Text style={styles.subCardLabel}>Pemasukan Bulan Ini</Text>
+                <Text numberOfLines={1} style={styles.subCardIncome}>
+                  +{formatCurrency(summary.income)}
+                </Text>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <View style={[styles.statIcon, styles.expenseIcon]}>
-                  <ArrowUpRight color={colors.coral} size={18} />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>Pengeluaran</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
-                    {formatCurrency(summary.expense)}
-                  </Text>
-                </View>
+              <View style={styles.subCardItem}>
+                <Text style={styles.subCardLabel}>Pengeluaran Bulan Ini</Text>
+                <Text numberOfLines={1} style={styles.subCardExpense}>
+                  -{formatCurrency(summary.expense)}
+                </Text>
               </View>
             </View>
           </View>
@@ -442,7 +430,7 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1 },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   page: {
     alignSelf: 'center',
@@ -475,6 +463,17 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.98 }],
+  },
+  badgeDot: {
+    backgroundColor: '#EF4444',
+    borderColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 10,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 10,
   },
   greetingRow: {
     alignItems: 'center',
@@ -513,85 +512,72 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   balancePanel: {
-    backgroundColor: colors.primaryDark,
-    borderRadius: layout.radius,
-    gap: 24,
-    padding: 24,
-  },
-  balancePanelWide: {
     alignItems: 'center',
+    backgroundColor: '#22C55E',
+    borderRadius: 24,
+    elevation: 6,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
     justifyContent: 'space-between',
+    padding: 22,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
   },
   balanceMain: {
-    gap: 7,
-  },
-  balanceLabelRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    flex: 1,
+    gap: 4,
+    minWidth: 180,
   },
   balanceLabel: {
-    color: '#D7E8E4',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
+    opacity: 0.95,
   },
   balanceValue: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 34,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   balanceHint: {
-    color: '#B9D8D1',
-    fontSize: 13,
-  },
-  balanceStats: {
-    borderTopColor: '#2B746A',
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 20,
-  },
-  balanceStatsWide: {
-    borderLeftColor: '#2B746A',
-    borderLeftWidth: 1,
-    borderTopWidth: 0,
-    minWidth: 390,
-    paddingLeft: 28,
-    paddingTop: 0,
-  },
-  statItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statIcon: {
-    alignItems: 'center',
-    borderRadius: layout.radius,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-  },
-  incomeIcon: {
-    backgroundColor: colors.primarySoft,
-  },
-  expenseIcon: {
-    backgroundColor: colors.coralSoft,
-  },
-  statLabel: {
-    color: '#B9D8D1',
+    color: '#FFFFFF',
     fontSize: 12,
+    opacity: 0.85,
   },
-  statValue: {
-    color: colors.white,
-    fontSize: 16,
+  balanceSubCards: {
+    gap: 8,
+    minWidth: 180,
+  },
+  subCardItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+  },
+  subCardLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  subCardIncome: {
+    color: '#16A34A',
+    fontSize: 15,
     fontWeight: '800',
-    marginTop: 3,
-    maxWidth: 135,
+    marginTop: 2,
   },
-  statDivider: {
-    backgroundColor: '#2B746A',
-    width: 1,
+  subCardExpense: {
+    color: '#EF4444',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 2,
   },
   section: {
     marginTop: 30,
@@ -712,6 +698,12 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: 'center',
     width: 38,
+  },
+  incomeIcon: {
+    backgroundColor: '#DCFCE7',
+  },
+  expenseIcon: {
+    backgroundColor: colors.coralSoft,
   },
   transactionCopy: {
     flex: 1,
