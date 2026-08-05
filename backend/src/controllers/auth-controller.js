@@ -19,9 +19,14 @@ const defaultCategories = [
 ];
 
 function createToken(user) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT secret is not configured');
+  }
+
   return jwt.sign(
     { idUser: user.id_user, email: user.email },
-    process.env.JWT_SECRET,
+    secret,
     { expiresIn: '7d' },
   );
 }

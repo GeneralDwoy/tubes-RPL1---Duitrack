@@ -13,9 +13,15 @@ function authenticate(req, res, next) {
   const token = authorization.slice(7);
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT secret is not configured');
+    }
+
+    req.user = jwt.verify(token, secret);
     return next();
-  } catch {
+  } catch (error) {
+    console.error('Authentication failed:', error.message);
     return res.status(401).json({
       status: 'error',
       message: 'Token autentikasi tidak valid atau sudah kedaluwarsa',

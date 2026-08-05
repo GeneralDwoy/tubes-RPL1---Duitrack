@@ -1,5 +1,12 @@
 require('dotenv').config();
 
+const requiredEnv = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME', 'JWT_SECRET'];
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
+
 const cors = require('cors');
 const express = require('express');
 const path = require('node:path');
